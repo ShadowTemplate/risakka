@@ -1,15 +1,17 @@
 package risakka.server.actor;
 
+import akka.actor.ActorRef;
 import akka.actor.UntypedActor;
 import risakka.server.raft.LogEntry;
+import risakka.server.raft.State;
 
 public class Server extends UntypedActor {
 
-    // server state
+    private State state;
 
     // persistent fields
     private Integer currentTerm;
-    // votedFor
+    private ActorRef votedFor;
     private LogEntry[] log;
 
     // volatile fields
@@ -20,8 +22,24 @@ public class Server extends UntypedActor {
     private Integer[] nextIndex;
     private Integer[] matchIndex;
 
+    public Server() {
+        toFollowerState();
+    }
 
     public void onReceive(Object message) throws Throwable {
         // on RPC messages
     }
+
+    private void toFollowerState() {
+        state = State.FOLLOWER;
+    }
+
+    private void toCandidateState() {
+        state = State.CANDIDATE;
+    }
+
+    private void toLeaderState() {
+        state = State.LEADER;
+    }
+
 }
