@@ -60,7 +60,7 @@ public class Server extends UntypedActor {
     }
 
     // Promemoria: rischedulare immediatamente HeartbeatTimeout appena si ricevono notizie dal server.
-    
+
 
     public void onReceive(Object message) throws Throwable {
         // on RPC messages
