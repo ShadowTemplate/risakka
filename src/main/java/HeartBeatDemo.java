@@ -79,7 +79,7 @@ public class HeartBeatDemo {
     }
 
     public static void main(String[] args) {
-        final ActorSystem system = ActorSystem.create("heartbeatdemo");
+        final ActorSystem system = ActorSystem.create("heartbeat-demo");
         ActorRef follower = system.actorOf(Props.create(Follower.class), "follower");
         system.actorOf(Props.create(Leader.class, follower), "leader");
     }

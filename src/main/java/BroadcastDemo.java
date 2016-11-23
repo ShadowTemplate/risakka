@@ -37,7 +37,7 @@ public class BroadcastDemo {
 
         public void onReceive(Object message) {
             if (message instanceof BroadcastMessage) {
-                System.out.println("Received broadcast message by " + getSelf().path().name());
+                System.out.println("Received broadcast message by " + getSelf().path());
             } else {
                 System.out.println("Unhandled message: " + message.getClass());
                 unhandled(message);
@@ -46,8 +46,8 @@ public class BroadcastDemo {
     }
 
     public static void main(String[] args) {
-        final ActorSystem system = ActorSystem.create("broadcastdemo");
-        List<Routee> actorsList = new ArrayList<Routee>();
+        final ActorSystem system = ActorSystem.create("broadcast-demo");
+        List<Routee> actorsList = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             ActorRef follower = system.actorOf(Props.create(Follower.class), "follower" + i);
             actorsList.add(new ActorRefRoutee(follower));
