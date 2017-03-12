@@ -7,7 +7,7 @@ public enum PersistenceManager {
 
     PersistenceManager() {
         if (storageUnit == null) {
-            storageUnit = new DiskStorage(); // should be defined by a property
+            storageUnit = new DiskStorage(); // TODO should be defined by a property
         }
     }
 
