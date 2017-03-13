@@ -57,6 +57,7 @@ public class RaftServer extends UntypedActor {
 
 
     public RaftServer() {
+        System.out.println("Creating RaftServer");
         votersIds = new HashSet<>();
     }
 
@@ -199,8 +200,7 @@ public class RaftServer extends UntypedActor {
                 if (invocation.getTerm() < currentTerm || log.size() < invocation.getPrevLogIndex()) {
                     // TODO I added the 2nd check. Maybe it's unnecessary, but an AIOOBException could be thrown otherwise later
                     response = new AppendEntriesResponse(currentTerm, false);
-                }
-                if (!log.get(invocation.getPrevLogIndex()).getTermNumber().equals(invocation.getPrevLogTerm())) {
+                } else if (!log.get(invocation.getPrevLogIndex()).getTermNumber().equals(invocation.getPrevLogTerm())) {
                     response = new AppendEntriesResponse(currentTerm, false);
                 } else {
                     List<LogEntry> newEntries = invocation.getEntries();
