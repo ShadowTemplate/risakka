@@ -11,14 +11,15 @@ import risakka.server.message.SendHeartbeatMessage;
 import risakka.server.raft.LogEntry;
 import risakka.server.raft.State;
 import risakka.server.rpc.AppendEntriesInvocation;
+import risakka.server.rpc.AppendEntriesResponse;
 import risakka.server.rpc.RequestVoteInvocation;
 import risakka.server.rpc.RequestVoteResponse;
 import risakka.server.util.Conf;
+import risakka.server.util.SequentialContainer;
+import risakka.server.util.Util;
 import scala.concurrent.duration.Duration;
 
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Getter
@@ -28,8 +29,8 @@ public class RaftServer extends UntypedActor {
 
     // persistent fields  // TODO These 3 fields must be updated on stable storage before responding to RPC
     private Integer currentTerm = 0; // a // TODO check if init with 0 or by loading from the persistent state
-    private ActorRef votedFor;
-    private LogEntry[] log;
+    private ActorRef votedFor;  // TODO reset to null after on currentTerm change?
+    private SequentialContainer<LogEntry> log;  // first index is 1
 
     // volatile fields
     private Integer commitIndex;
@@ -44,7 +45,6 @@ public class RaftServer extends UntypedActor {
 
     // volatile TODO is this right?
     private State state;
-    private final int ELECTION_TIMEOUT;
     private Set<String> votersIds;
 
 
@@ -57,9 +57,7 @@ public class RaftServer extends UntypedActor {
 
 
     public RaftServer() {
-        ELECTION_TIMEOUT = Conf.HEARTBEAT_FREQUENCY * 10 + (new Random().nextInt(Conf.HEARTBEAT_FREQUENCY / 2));  // TODO check the math
         votersIds = new HashSet<>();
-        System.out.println("Election timeout for " + getSelf().path().name() + " is " + ELECTION_TIMEOUT);
     }
 
     @Override
@@ -73,15 +71,17 @@ public class RaftServer extends UntypedActor {
 
     public void onReceive(Object message) throws Throwable {
         if (message instanceof SendHeartbeatMessage) {
-            System.out.println(getSelf().path().name() + " is going to send heartbeat as a leader...");
+            System.out.println(getSelf().path().name() + " is going to send heartbeat as a LEADER...");
             // assert state == State.LEADER;
-            broadcastRouter.route(new AppendEntriesInvocation(), getSelf());  // TODO properly build AppendEntriesInvocation empty message to make an heartbeat
+            sendHeartbeat();
         } else if (message instanceof ElectionTimeoutMessage) {
             onElectionTimeoutMessage();
         } else if (message instanceof RequestVoteResponse) {
             onRequestVoteResponse((RequestVoteResponse) message);
         } else if (message instanceof RequestVoteInvocation) {
             onRequestVoteInvocation((RequestVoteInvocation) message);
+        } else if (message instanceof AppendEntriesInvocation) {
+            onAppendEntriesInvocation((AppendEntriesInvocation) message);
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
@@ -107,8 +107,9 @@ public class RaftServer extends UntypedActor {
     private void startHeartbeating() {  // TODO remember to stop heartbeating when no more leader
         cancelSchedule(heartbeatSchedule);
         // Schedule a new heartbeat for itself. Starts immediately and repeats every HEARTBEAT_FREQUENCY
-        heartbeatSchedule = getContext().system().scheduler().schedule(Duration.create(0, TimeUnit.MILLISECONDS),
-                Duration.create(Conf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(), new SendHeartbeatMessage(),
+        heartbeatSchedule = getContext().system().scheduler().schedule(
+                Duration.create(0, TimeUnit.MILLISECONDS), // q
+                Duration.create(Conf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(), new SendHeartbeatMessage(), // q
                 getContext().system().dispatcher(), getSelf());
     }
 
@@ -116,8 +117,10 @@ public class RaftServer extends UntypedActor {
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT and repeats every ELECTION_TIMEOUT
         // TODO should repeat every interval or JUST ONCE?
-        electionSchedule = getContext().system().scheduler().schedule(Duration.create(ELECTION_TIMEOUT, TimeUnit.MILLISECONDS),
-                Duration.create(ELECTION_TIMEOUT, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
+        int electionTimeout = Util.getElectionTimeout(); // p
+        electionSchedule = getContext().system().scheduler().schedule(
+                Duration.create(electionTimeout, TimeUnit.MILLISECONDS),
+                Duration.create(electionTimeout, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
                 getContext().system().dispatcher(), getSelf());
     }
 
@@ -158,6 +161,7 @@ public class RaftServer extends UntypedActor {
     }
 
     private void onRequestVoteResponse(RequestVoteResponse response) {
+        System.out.println(getSelf().path().name() + " in state " + getState() + " has received RequestVoteResponse");
         if (response.getTerm().equals(currentTerm) && response.getVoteGranted()) { // l
             System.out.println(getSelf().path().name() + " has received vote from " +
                     getSender().path().toSerializationFormat());
@@ -169,6 +173,7 @@ public class RaftServer extends UntypedActor {
     }
 
     private void onRequestVoteInvocation(RequestVoteInvocation invocation) {
+        System.out.println(getSelf().path().name() + " in state " + getState() + " has received RequestVoteInvocation");
         RequestVoteResponse response;
         if (invocation.getTerm() < currentTerm) { // m
             response = new RequestVoteResponse(currentTerm, false);
@@ -181,7 +186,53 @@ public class RaftServer extends UntypedActor {
         getSender().tell(response, getSelf());
     }
 
-    private boolean isLogUpToDate(Integer candidateLastLogIndex, Integer candidateLastLogTerm) {
-        return new Random().nextBoolean(); // TODO IMPLEMENT LOGIC par 5.2, 5.4
+    private boolean isLogUpToDate(Integer candidateLastLogIndex, Integer candidateLastLogTerm) { // t
+        return candidateLastLogTerm > currentTerm ||
+                (candidateLastLogTerm.equals(currentTerm) && candidateLastLogIndex > log.size());
+    }
+
+    private void onAppendEntriesInvocation(AppendEntriesInvocation invocation) {
+        System.out.println(getSelf().path().name() + " in state " + getState() + " has received AppendEntriesInvocation");
+        switch (getState()) {
+            case FOLLOWER:  // s
+                AppendEntriesResponse response;
+                if (invocation.getTerm() < currentTerm || log.size() < invocation.getPrevLogIndex()) {
+                    // TODO I added the 2nd check. Maybe it's unnecessary, but an AIOOBException could be thrown otherwise later
+                    response = new AppendEntriesResponse(currentTerm, false);
+                }
+                if (!log.get(invocation.getPrevLogIndex()).getTermNumber().equals(invocation.getPrevLogTerm())) {
+                    response = new AppendEntriesResponse(currentTerm, false);
+                } else {
+                    List<LogEntry> newEntries = invocation.getEntries();
+                    for (LogEntry entry : newEntries) {
+                        if (log.size() >= entry.getPositionInLog() && // there is already an entry in that position
+                                !log.get(entry.getPositionInLog()).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
+                            log.deleteFrom(entry.getPositionInLog());
+                        }
+                        log.set(entry.getPositionInLog(), entry);
+                    }
+                    if (invocation.getLeaderCommit() > commitIndex) {
+                        commitIndex = Integer.min(invocation.getLeaderCommit(),
+                                newEntries.get(newEntries.size() - 1).getPositionInLog());
+                    }
+                    response = new AppendEntriesResponse(currentTerm, true);
+                }
+                getSender().tell(response, getSelf());
+                break;
+            case CANDIDATE:
+                if (invocation.getTerm() >= currentTerm) { // o
+                    System.out.println(getSelf().path().name() + " recognizes " + getSender().path().name() +
+                            " as LEADER and will switch to FOLLOWER state");
+                    toFollowerState();
+                } // else: reject RPC and remain in CANDIDATE state
+                break;
+            default:
+                // TODO
+                break;
+        }
+    }
+
+    private void sendHeartbeat() {
+        broadcastRouter.route(new AppendEntriesInvocation(currentTerm, 0, 0, new ArrayList<>(), 0), getSelf());  // TODO properly build AppendEntriesInvocation empty message to make an heartbeat
     }
 }

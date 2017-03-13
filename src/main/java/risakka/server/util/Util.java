@@ -9,15 +9,17 @@ import risakka.server.actor.DemoServer;
 import risakka.server.actor.RaftServer;
 import scala.concurrent.duration.Duration;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.stream.Collectors.toMap;
 
 public class Util {
+
+    public static int getElectionTimeout() {
+        return Conf.HEARTBEAT_FREQUENCY * 10 + (new Random().nextInt(Conf.HEARTBEAT_FREQUENCY / 2));
+        // TODO check the math. Election timeouts should be chosen randomly from a fixed interval (150-300 ms)
+    }
 
     private static Map<ActorPath, Router> buildBroadcastRoutersMap(List<ActorRef> actors) {
         Map<ActorPath, Router> routerMap = new HashMap<>(actors.size());

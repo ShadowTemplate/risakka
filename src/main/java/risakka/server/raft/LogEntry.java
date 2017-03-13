@@ -3,10 +3,13 @@ package risakka.server.raft;
 import lombok.Data;
 import risakka.server.persistence.Durable;
 
-@Data
-public class LogEntry implements Durable {
+import java.io.Serializable;
 
-    StateMachineCommand command;
-    int termNumber;
+@Data
+public class LogEntry implements Durable, Serializable{
+
+    private StateMachineCommand command; // r
+    private Integer termNumber; // r
+    private Integer positionInLog;
 
 }
