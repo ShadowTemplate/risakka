@@ -10,5 +10,4 @@ public class ClientRequest {
 
     private Integer requestId;
     private StateMachineCommand command;
-
 }

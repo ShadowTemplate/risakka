@@ -9,7 +9,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class AppendEntriesInvocation implements Serializable {
+public class AppendEntriesRequest implements Serializable {
 
     private Integer term;
     // leaderId can be retrieved via Akka's getSender() method

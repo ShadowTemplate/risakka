@@ -10,6 +10,6 @@ public class LogEntry implements Durable, Serializable{
 
     private StateMachineCommand command; // r
     private Integer termNumber; // r
-    private Integer positionInLog;
+    // private Integer positionInLog;
 
 }
