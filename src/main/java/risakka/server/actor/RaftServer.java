@@ -22,6 +22,10 @@ import scala.concurrent.duration.Duration;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import risakka.server.message.ClientRequest;
+import risakka.server.message.ServerResponse;
+import risakka.server.raft.StateMachineCommand;
+import risakka.server.raft.Status;
 
 @Getter
 @Setter
@@ -92,6 +96,8 @@ public class RaftServer extends UntypedActor {
             onAppendEntriesRequest((AppendEntriesRequest) message);
         } else if (message instanceof AppendEntriesResponse) {
             onAppendEntriesResponse((AppendEntriesResponse) message);
+        } else if (message instanceof ClientRequest) {
+            onClientRequest((ClientRequest) message);
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
@@ -212,7 +218,7 @@ public class RaftServer extends UntypedActor {
                         " as LEADER and will switch to FOLLOWER state");
                 toFollowerState();
             } else {
-                response = new AppendEntriesResponse(persistentState.currentTerm, false);
+                response = new AppendEntriesResponse(persistentState.currentTerm, false, null);
                 getSender().tell(response, getSelf());
                 return; // reject RPC and remain in CANDIDATE state
             }
@@ -224,7 +230,7 @@ public class RaftServer extends UntypedActor {
         if (invocation.getTerm() < persistentState.currentTerm ||
                 persistentState.log.size() < invocation.getPrevLogIndex() ||
                 !persistentState.log.get(invocation.getPrevLogIndex()).getTermNumber().equals(invocation.getPrevLogTerm())) {
-            response = new AppendEntriesResponse(persistentState.currentTerm, false);
+            response = new AppendEntriesResponse(persistentState.currentTerm, false, null);
         } else {
             List<LogEntry> newEntries = invocation.getEntries();
             int currIndex = invocation.getPrevLogIndex() + 1;
@@ -239,7 +245,7 @@ public class RaftServer extends UntypedActor {
             if (invocation.getLeaderCommit() > commitIndex) {
                 commitIndex = Integer.min(invocation.getLeaderCommit(), currIndex - 1);
             }
-            response = new AppendEntriesResponse(persistentState.currentTerm, true);
+            response = new AppendEntriesResponse(persistentState.currentTerm, true, currIndex - 1);
         }
         getSender().tell(response, getSelf());
     }
@@ -249,5 +255,72 @@ public class RaftServer extends UntypedActor {
     }
 
     private void onAppendEntriesResponse(AppendEntriesResponse message) {
+        String serverName = getSender().path().name(); //e.g. server0
+        int followerId = serverName.charAt(serverName.length() - 1);
+        
+        if (message.getSuccess()) { //x      
+            //update nextIndex and matchIndex
+            nextIndex[followerId] = message.getLastEntryIndex();
+            matchIndex[followerId] = message.getLastEntryIndex();
+        } else { //y
+            //since failed, try again decrementing nextIndex
+            nextIndex[followerId] -= 1;
+            sendAppendEntriesToOneFollower(followerId);
+        }
+    }
+
+    private void onClientRequest(ClientRequest message) { //t
+        System.out.println(getSelf().path().name() + " in state " + getState() + " has received ClientRequestMessage");
+        ServerResponse response;
+
+        switch (getState()) {
+            case LEADER:
+                //append entry to local log
+                addEntryToLog(message.getCommand()); //u
+
+                //send appendEntriesRequest to followers
+                sendAppendEntriesToAllFollowers(); //w
+                
+                //TODO (v) send answer back to the client when committed
+
+                break;
+            
+            case FOLLOWER:
+            case CANDIDATE:
+                //TODO send hint who is the leader
+                response = new ServerResponse(Status.NOT_LEADER, null, null);
+                break;
+        }
+
+        //getSender().tell(response, getSelf());
+    }
+
+    private void addEntryToLog(StateMachineCommand command) { //u
+        LogEntry entry = new LogEntry(command, persistentState.currentTerm);
+        int lastIndex = persistentState.log.size();
+        persistentState.log.set(lastIndex + 1, entry);
+    }
+
+    private void sendAppendEntriesToAllFollowers() { //w
+        for (int i = 0; i < nextIndex.length; i++) {
+            sendAppendEntriesToOneFollower(i);
+        }
+    }
+    
+    private void sendAppendEntriesToOneFollower(Integer followerId) { //w
+        int lastIndex = persistentState.log.size();
+        if (lastIndex >= nextIndex[followerId]) {
+            //previous entry w.r.t. the new ones that has to match in order to accept the new ones
+            LogEntry prevEntry = persistentState.log.get(nextIndex[followerId] - 1);
+            Integer prevLogTerm = prevEntry.getTermNumber();
+
+            //get new entries
+            List<LogEntry> entries = new ArrayList<>();
+            for (int j = nextIndex[followerId]; j <= lastIndex; j++) {
+                entries.add(persistentState.log.get(j));
+            }
+            //TODO send request to follower i
+            new AppendEntriesRequest(persistentState.currentTerm, nextIndex[followerId] - 1, prevLogTerm, entries, commitIndex);
+        }
     }
 }

@@ -11,4 +11,7 @@ public class AppendEntriesResponse implements Serializable {
 
     private Integer term;
     private Boolean success;
+    
+    //field needed to update nextIndex and matchIndex 
+    private Integer lastEntryIndex;
 }

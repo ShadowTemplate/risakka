@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import risakka.server.raft.Status;
 
 
 public class RaftClient extends UntypedActor {
@@ -43,7 +44,7 @@ public class RaftClient extends UntypedActor {
             ClientRequest request = (ClientRequest) message;
             System.out.println("Server has received request from client " + getSender().path().toSerializationFormat() +
                     " with id " + request.getRequestId());
-            getSender().tell(new ServerResponse(request.getRequestId(), getSelf()), getSelf());
+            getSender().tell(new ServerResponse(Status.OK, request.getRequestId(), getSelf()), getSelf());
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
