@@ -11,7 +11,7 @@ public enum PersistenceManager {
         }
     }
 
-    public void persist(Durable object) throws Exception {
+    public void persist(Durable object) throws StorageException {
         storageUnit.store(object);
     }
 }

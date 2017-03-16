@@ -1,6 +1,5 @@
 package risakka.server.actor;
 
-import akka.actor.ActorRef;
 import akka.actor.Cancellable;
 import akka.actor.UntypedActor;
 import akka.routing.Router;
@@ -8,15 +7,12 @@ import lombok.Getter;
 import lombok.Setter;
 import risakka.server.message.ElectionTimeoutMessage;
 import risakka.server.message.SendHeartbeatMessage;
-import risakka.server.persistence.Durable;
-import risakka.server.raft.LogEntry;
-import risakka.server.raft.State;
+import risakka.server.raft.*;
 import risakka.server.rpc.AppendEntriesRequest;
 import risakka.server.rpc.AppendEntriesResponse;
 import risakka.server.rpc.RequestVoteRequest;
 import risakka.server.rpc.RequestVoteResponse;
 import risakka.server.util.Conf;
-import risakka.server.util.SequentialContainer;
 import risakka.server.util.Util;
 import scala.concurrent.duration.Duration;
 
@@ -24,22 +20,10 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import risakka.server.message.ClientRequest;
 import risakka.server.message.ServerResponse;
-import risakka.server.raft.StateMachineCommand;
-import risakka.server.raft.Status;
 
 @Getter
 @Setter
 public class RaftServer extends UntypedActor {
-
-    private class PersistentState implements Durable {
-        // persistent fields  // TODO These 3 fields must be updated on stable storage before responding to RPC
-        private Integer currentTerm = 0; // a // TODO check if init with 0 or by loading from the persistent state
-        private ActorRef votedFor;  // TODO reset to null after on currentTerm change?
-        private SequentialContainer<LogEntry> log;  // first index is 1
-
-        // TODO SETTER WITH UPDATE ON PERS STORAGE
-    }
-
 
     // Raft paper fields
     private PersistentState persistentState;
@@ -152,12 +136,12 @@ public class RaftServer extends UntypedActor {
 
     private void beginElection() { // d
         votersIds.clear();
-        persistentState.currentTerm++; // b
+        persistentState.updateCurrentTerm(persistentState.getCurrentTerm() + 1); // b
         votersIds.add(getSelf().path().toSerializationFormat()); // f
         // TODO change randomly my electionTimeout
         scheduleElection(); // g
         System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
-        broadcastRouter.route(new RequestVoteRequest(persistentState.currentTerm, 0, 0), getSelf()); // h // TODO properly set last 2 params
+        broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), 0, 0), getSelf()); // h // TODO properly set last 2 params
     }
 
     private void onElectionTimeoutMessage() {
@@ -179,7 +163,7 @@ public class RaftServer extends UntypedActor {
 
     private void onRequestVoteResponse(RequestVoteResponse response) {
         System.out.println(getSelf().path().name() + " in state " + getState() + " has received RequestVoteResponse");
-        if (response.getTerm().equals(persistentState.currentTerm) && response.getVoteGranted()) { // l
+        if (response.getTerm().equals(persistentState.getCurrentTerm()) && response.getVoteGranted()) { // l
             System.out.println(getSelf().path().name() + " has received vote from " +
                     getSender().path().toSerializationFormat());
             votersIds.add(getSender().path().toSerializationFormat());
@@ -192,20 +176,21 @@ public class RaftServer extends UntypedActor {
     private void onRequestVoteRequest(RequestVoteRequest invocation) {
         System.out.println(getSelf().path().name() + " in state " + getState() + " has received RequestVoteRequest");
         RequestVoteResponse response;
-        if (invocation.getTerm() < persistentState.currentTerm) { // m
-            response = new RequestVoteResponse(persistentState.currentTerm, false);
-        } else if ((persistentState.votedFor == null || persistentState.votedFor.equals(getSender())) &&
+        if (invocation.getTerm() < persistentState.getCurrentTerm()) { // m
+            response = new RequestVoteResponse(persistentState.getCurrentTerm(), false);
+        } else if ((persistentState.getVotedFor() == null || persistentState.getVotedFor().equals(getSender())) &&
                 isLogUpToDate(invocation.getLastLogIndex(), invocation.getLastLogTerm())) { // n
-            response = new RequestVoteResponse(persistentState.currentTerm, true);
+            // TODO shouldn't we set votedFor now?
+            response = new RequestVoteResponse(persistentState.getCurrentTerm(), true);
         } else {
-            response = new RequestVoteResponse(persistentState.currentTerm, false);
+            response = new RequestVoteResponse(persistentState.getCurrentTerm(), false);
         }
         getSender().tell(response, getSelf());
     }
 
     private boolean isLogUpToDate(Integer candidateLastLogIndex, Integer candidateLastLogTerm) { // t
-        return candidateLastLogTerm > persistentState.currentTerm ||
-                (candidateLastLogTerm.equals(persistentState.currentTerm) && candidateLastLogIndex > persistentState.log.size());
+        return candidateLastLogTerm > persistentState.getCurrentTerm() ||
+                (candidateLastLogTerm.equals(persistentState.getCurrentTerm()) && candidateLastLogIndex > persistentState.getLog().size());
     }
 
     private void onAppendEntriesRequest(AppendEntriesRequest invocation) {
@@ -213,12 +198,12 @@ public class RaftServer extends UntypedActor {
 
         AppendEntriesResponse response;
         if (getState() == State.CANDIDATE) {
-            if (invocation.getTerm() >= persistentState.currentTerm) { // o
+            if (invocation.getTerm() >= persistentState.getCurrentTerm()) { // o
                 System.out.println(getSelf().path().name() + " recognizes " + getSender().path().name() +
                         " as LEADER and will switch to FOLLOWER state");
                 toFollowerState();
             } else {
-                response = new AppendEntriesResponse(persistentState.currentTerm, false, null);
+                response = new AppendEntriesResponse(persistentState.getCurrentTerm(), false, null);
                 getSender().tell(response, getSelf());
                 return; // reject RPC and remain in CANDIDATE state
             }
@@ -227,31 +212,31 @@ public class RaftServer extends UntypedActor {
         //case FOLLOWER: // s
         //case LEADER: // s // Leader may receive AppendEntries from other (old, isolated) Leaders
         //case [ex-CANDIDATE]
-        if (invocation.getTerm() < persistentState.currentTerm ||
-                persistentState.log.size() < invocation.getPrevLogIndex() ||
-                !persistentState.log.get(invocation.getPrevLogIndex()).getTermNumber().equals(invocation.getPrevLogTerm())) {
-            response = new AppendEntriesResponse(persistentState.currentTerm, false, null);
+        if (invocation.getTerm() < persistentState.getCurrentTerm() ||
+                persistentState.getLog().size() < invocation.getPrevLogIndex() ||
+                !persistentState.getLog().get(invocation.getPrevLogIndex()).getTermNumber().equals(invocation.getPrevLogTerm())) {
+            response = new AppendEntriesResponse(persistentState.getCurrentTerm(), false, null);
         } else {
             List<LogEntry> newEntries = invocation.getEntries();
             int currIndex = invocation.getPrevLogIndex() + 1;
             for (LogEntry entry : newEntries) {
-                if (persistentState.log.size() >= currIndex && // there is already an entry in that position
-                        !persistentState.log.get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
-                    persistentState.log.deleteFrom(currIndex);
+                if (persistentState.getLog().size() >= currIndex && // there is already an entry in that position
+                        !persistentState.getLog().get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
+                    persistentState.getLog().deleteFrom(currIndex);
                 }
-                persistentState.log.set(currIndex, entry);
+                persistentState.getLog().set(currIndex, entry);
                 currIndex++;
             }
             if (invocation.getLeaderCommit() > commitIndex) {
                 commitIndex = Integer.min(invocation.getLeaderCommit(), currIndex - 1);
             }
-            response = new AppendEntriesResponse(persistentState.currentTerm, true, currIndex - 1);
+            response = new AppendEntriesResponse(persistentState.getCurrentTerm(), true, currIndex - 1);
         }
         getSender().tell(response, getSelf());
     }
 
     private void sendHeartbeat() {
-        broadcastRouter.route(new AppendEntriesRequest(persistentState.currentTerm, 0, 0, new ArrayList<>(), 0), getSelf());  // TODO properly build AppendEntriesRequest empty message to make an heartbeat
+        broadcastRouter.route(new AppendEntriesRequest(persistentState.getCurrentTerm(), 0, 0, new ArrayList<>(), 0), getSelf());  // TODO properly build AppendEntriesRequest empty message to make an heartbeat
     }
 
     private void onAppendEntriesResponse(AppendEntriesResponse message) {
@@ -296,9 +281,9 @@ public class RaftServer extends UntypedActor {
     }
 
     private void addEntryToLog(StateMachineCommand command) { //u
-        LogEntry entry = new LogEntry(command, persistentState.currentTerm);
-        int lastIndex = persistentState.log.size();
-        persistentState.log.set(lastIndex + 1, entry);
+        LogEntry entry = new LogEntry(command, persistentState.getCurrentTerm());
+        int lastIndex = persistentState.getLog().size();
+        persistentState.getLog().set(lastIndex + 1, entry);
     }
 
     private void sendAppendEntriesToAllFollowers() { //w
@@ -308,19 +293,19 @@ public class RaftServer extends UntypedActor {
     }
     
     private void sendAppendEntriesToOneFollower(Integer followerId) { //w
-        int lastIndex = persistentState.log.size();
+        int lastIndex = persistentState.getLog().size();
         if (lastIndex >= nextIndex[followerId]) {
             //previous entry w.r.t. the new ones that has to match in order to accept the new ones
-            LogEntry prevEntry = persistentState.log.get(nextIndex[followerId] - 1);
+            LogEntry prevEntry = persistentState.getLog().get(nextIndex[followerId] - 1);
             Integer prevLogTerm = prevEntry.getTermNumber();
 
             //get new entries
             List<LogEntry> entries = new ArrayList<>();
             for (int j = nextIndex[followerId]; j <= lastIndex; j++) {
-                entries.add(persistentState.log.get(j));
+                entries.add(persistentState.getLog().get(j));
             }
             //TODO send request to follower i
-            new AppendEntriesRequest(persistentState.currentTerm, nextIndex[followerId] - 1, prevLogTerm, entries, commitIndex);
+            new AppendEntriesRequest(persistentState.getCurrentTerm(), nextIndex[followerId] - 1, prevLogTerm, entries, commitIndex);
         }
     }
 }
