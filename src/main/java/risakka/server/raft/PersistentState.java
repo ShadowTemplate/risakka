@@ -6,7 +6,6 @@ import lombok.Getter;
 import risakka.server.persistence.Durable;
 import risakka.server.persistence.PersistenceManager;
 import risakka.server.persistence.StorageException;
-import risakka.server.util.SequentialContainer;
 
 @Getter
 @AllArgsConstructor
@@ -18,7 +17,7 @@ public class PersistentState implements Durable {
 
     // TODO fix getLog() bypassing update
 
-    public void updateCurrentTerm(Integer currentTerm) throws StorageException {
+    public void updateCurrentTerm(Integer currentTerm) {
         this.currentTerm = currentTerm;
         PersistenceManager.instance.persist(this);
     }
@@ -28,8 +27,13 @@ public class PersistentState implements Durable {
         PersistenceManager.instance.persist(this);
     }
 
-    public void updateLog(SequentialContainer<LogEntry> log) {
-        this.log = log;
+    public void updateLog(int i, LogEntry item) {
+        log.set(i, item);
+        PersistenceManager.instance.persist(this);
+    }
+
+    public void deleteLogFrom(int i) {
+        log.deleteFrom(i);
         PersistenceManager.instance.persist(this);
     }
 }

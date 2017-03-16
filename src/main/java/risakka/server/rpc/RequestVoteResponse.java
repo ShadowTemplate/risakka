@@ -1,15 +1,29 @@
 package risakka.server.rpc;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import risakka.server.actor.RaftServer;
+import risakka.server.raft.ServerMessage;
+import risakka.server.util.Conf;
 
-import java.io.Serializable;
-
-@Data
 @AllArgsConstructor
-public class RequestVoteResponse implements Serializable {
+public class RequestVoteResponse extends RPC implements ServerMessage {
 
     private Integer term;
     private Boolean voteGranted;
 
+    @Override
+    public void onReceivedBy(RaftServer server) {
+        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteResponse");
+        if (term.equals(server.getPersistentState().getCurrentTerm()) && voteGranted) { // l
+            System.out.println(server.getSelf().path().name() + " has received vote from " +
+                    server.getSender().path().toSerializationFormat());
+            server.getVotersIds().add(server.getSender().path().toSerializationFormat());
+        }
+
+        if (server.getVotersIds().size() > Conf.SERVER_NUMBER / 2) {
+            server.toLeaderState(); // i
+        }
+
+        onProcedureCompleted(server, term);
+    }
 }

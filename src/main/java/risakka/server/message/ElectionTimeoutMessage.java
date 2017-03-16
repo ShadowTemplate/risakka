@@ -1,28 +1,28 @@
 package risakka.server.message;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
+import lombok.AllArgsConstructor;
 import risakka.server.actor.RaftServer;
-import risakka.server.raft.State;
+import risakka.server.raft.ServerMessage;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+@AllArgsConstructor
+public class ElectionTimeoutMessage implements ServerMessage {
 
-public class ElectionTimeoutMessage implements Serializable {
 
-    public ElectionTimeoutMessage() {
-
-    }
-
-    // TODO remove
-    public static void main(String[] args) {
-        final ActorSystem system = ActorSystem.create("routers-creation-test");
-        final int serverNumber = 3;
-        List<ActorRef> serverList = new ArrayList<>(serverNumber);
-        for (int i = 0; i < serverNumber; i++) {
-            serverList.add(system.actorOf(Props.create(RaftServer.class), "server" + i));
+    @Override
+    public void onReceivedBy(RaftServer server) {
+        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received ElectionTimeoutMessage");
+        switch (server.getState()) {
+            case FOLLOWER:
+                System.out.println(server.getSelf().path().name() + " will switch to CANDIDATE state");
+                server.toCandidateState();
+                break;
+            case CANDIDATE:
+                System.out.println(server.getSelf().path().name() + " will begin new election");
+                server.beginElection(); // d
+                break;
+            default:
+                System.err.println("Undefined behaviour for " + server.getState() + " state on ElectionTimeoutMessage");
+                break;
         }
     }
 }

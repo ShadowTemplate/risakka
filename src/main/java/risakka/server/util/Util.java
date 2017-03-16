@@ -46,4 +46,16 @@ public class Util {
         }
         system.shutdown();
     }
+
+    /*
+    // TODO remove
+    public static void main(String[] args) {
+        final ActorSystem system = ActorSystem.create("routers-creation-test");
+        final int serverNumber = 3;
+        List<ActorRef> serverList = new ArrayList<>(serverNumber);
+        for (int i = 0; i < serverNumber; i++) {
+            serverList.add(system.actorOf(Props.create(RaftServer.class), "server" + i));
+        }
+    }
+    */
 }

@@ -1,4 +1,6 @@
 package risakka.server.persistence;
 
-public interface Durable {
+import java.io.Serializable;
+
+public interface Durable extends Serializable {
 }
