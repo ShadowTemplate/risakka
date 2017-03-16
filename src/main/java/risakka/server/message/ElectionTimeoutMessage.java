@@ -7,7 +7,6 @@ import risakka.server.raft.ServerMessage;
 @AllArgsConstructor
 public class ElectionTimeoutMessage implements ServerMessage {
 
-
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received ElectionTimeoutMessage");

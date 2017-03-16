@@ -128,7 +128,7 @@ public class RaftServer extends UntypedActor {
     }
 
     // TODO move the following methods in an appropriate location
-    
+
     public void addEntryToLog(StateMachineCommand command) { //u
         LogEntry entry = new LogEntry(command, persistentState.getCurrentTerm());
         int lastIndex = persistentState.getLog().size();
