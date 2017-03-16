@@ -15,18 +15,20 @@ public class RequestVoteRequest extends RPC implements ServerMessage {
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteRequest");
+
+        onProcedureCall(server, term);  // TODO before tell?
+
         RequestVoteResponse response;
         if (term < server.getPersistentState().getCurrentTerm()) { // m
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
         } else if ((server.getPersistentState().getVotedFor() == null || server.getPersistentState().getVotedFor().equals(server.getSender())) &&
                 isLogUpToDate(server, lastLogIndex, lastLogTerm)) { // n
-            // TODO shouldn't we set votedFor now?
+            server.getPersistentState().updateVotedFor(server.getSelf());
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), true);
         } else {
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
         }
         server.getSender().tell(response, server.getSelf());
-        onProcedureCompleted(server, term);  // TODO before tell?
     }
 
     private boolean isLogUpToDate(RaftServer server, Integer candidateLastLogIndex, Integer candidateLastLogTerm) { // t

@@ -4,7 +4,7 @@ import risakka.server.actor.RaftServer;
 
 public class RPC {
 
-    public void onProcedureCompleted(RaftServer server, Integer term) { // A
+    public void onProcedureCall(RaftServer server, Integer term) { // A
         if (term > server.getPersistentState().getCurrentTerm()) {
             server.getPersistentState().updateCurrentTerm(term);
             server.toFollowerState();

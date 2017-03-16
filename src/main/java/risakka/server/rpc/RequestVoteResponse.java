@@ -14,6 +14,9 @@ public class RequestVoteResponse extends RPC implements ServerMessage {
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteResponse");
+
+        onProcedureCall(server, term);
+
         if (term.equals(server.getPersistentState().getCurrentTerm()) && voteGranted) { // l
             System.out.println(server.getSelf().path().name() + " has received vote from " +
                     server.getSender().path().toSerializationFormat());
@@ -23,7 +26,5 @@ public class RequestVoteResponse extends RPC implements ServerMessage {
         if (server.getVotersIds().size() > Conf.SERVER_NUMBER / 2) {
             server.toLeaderState(); // i
         }
-
-        onProcedureCompleted(server, term);
     }
 }

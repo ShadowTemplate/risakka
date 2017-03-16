@@ -15,6 +15,8 @@ public class AppendEntriesResponse extends RPC implements ServerMessage {
 
     @Override
     public void onReceivedBy(RaftServer server) {
+        onProcedureCall(server, term);
+
         String serverName = server.getSender().path().name(); //e.g. server0
         int followerId = serverName.charAt(serverName.length() - 1);
 
@@ -29,6 +31,5 @@ public class AppendEntriesResponse extends RPC implements ServerMessage {
             server.sendAppendEntriesToOneFollower(server, followerId);
         }
 
-        onProcedureCompleted(server, term);
     }
 }

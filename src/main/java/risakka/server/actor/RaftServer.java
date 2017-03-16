@@ -120,6 +120,7 @@ public class RaftServer extends UntypedActor {
     public void beginElection() { // d
         votersIds.clear();
         persistentState.updateCurrentTerm(persistentState.getCurrentTerm() + 1); // b
+        getPersistentState().updateVotedFor(getSelf());
         votersIds.add(getSelf().path().toSerializationFormat()); // f
         // TODO change randomly my electionTimeout
         scheduleElection(); // g

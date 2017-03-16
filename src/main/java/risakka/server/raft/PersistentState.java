@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import risakka.server.persistence.Durable;
 import risakka.server.persistence.PersistenceManager;
-import risakka.server.persistence.StorageException;
 
 @Getter
 @AllArgsConstructor
@@ -15,10 +14,9 @@ public class PersistentState implements Durable {
     private ActorRef votedFor;  // TODO reset to null after on currentTerm change?
     private SequentialContainer<LogEntry> log;  // first index is 1
 
-    // TODO fix getLog() bypassing update
-
     public void updateCurrentTerm(Integer currentTerm) {
         this.currentTerm = currentTerm;
+        this.votedFor = null;
         PersistenceManager.instance.persist(this);
     }
 
