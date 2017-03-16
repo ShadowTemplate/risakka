@@ -22,9 +22,12 @@ public class AppendEntriesResponse extends RPC implements ServerMessage {
 
         if (success) { //x
             //update nextIndex and matchIndex
-
             server.getNextIndex()[followerId] = lastEntryIndex;
             server.getMatchIndex()[followerId] = lastEntryIndex;
+            
+            //check if some entries can be committed
+            server.checkEntriesToCommit();
+            
         } else { //y
             //since failed, try again decrementing nextIndex
             server.getNextIndex()[followerId] -= 1;

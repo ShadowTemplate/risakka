@@ -158,4 +158,22 @@ public class RaftServer extends UntypedActor {
             new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), nextIndex[followerId] - 1, prevLogTerm, entries, server.getCommitIndex());
         }
     }
+    
+    public void checkEntriesToCommit() { //call iff leader
+
+        for (int i = persistentState.getLog().size(); i > commitIndex; i--) {
+            int count = 1; //on how many server the entry is replicated (myself for sure)
+
+            for (Integer index : matchIndex) {
+                if (index >= i && persistentState.getLog().get(i).getTermNumber().equals(persistentState.getCurrentTerm())) {
+                    count++;
+                }
+            }
+
+            if (count > Conf.SERVER_NUMBER / 2) {
+                commitIndex = i;
+                break;
+            }
+        }
+    }
 }
