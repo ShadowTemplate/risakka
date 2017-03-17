@@ -2,11 +2,11 @@ package risakka.raft.message.rpc.client;
 
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
-import risakka.raft.message.ServerMessage;
+import risakka.raft.message.MessageToServer;
 import risakka.raft.log.StateMachineCommand;
 
 @AllArgsConstructor
-public class ClientRequest implements ServerMessage {
+public class ClientRequest implements MessageToServer {
 
     private Integer requestId;
     private StateMachineCommand command;

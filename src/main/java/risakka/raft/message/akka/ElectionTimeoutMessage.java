@@ -2,10 +2,10 @@ package risakka.raft.message.akka;
 
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
-import risakka.raft.message.ServerMessage;
+import risakka.raft.message.MessageToServer;
 
 @AllArgsConstructor
-public class ElectionTimeoutMessage implements ServerMessage {
+public class ElectionTimeoutMessage implements MessageToServer {
 
     @Override
     public void onReceivedBy(RaftServer server) {

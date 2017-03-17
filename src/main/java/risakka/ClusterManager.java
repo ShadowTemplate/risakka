@@ -18,8 +18,7 @@ public class ClusterManager {
     private final ArrayList<ActorSystem> actorSystems;
     private final Map<Integer, ActorRef> actors;
 
-    public ClusterManager(ArrayList<ActorSystem> actorSystems, Map<Integer, ActorRef> actors)
-    {
+    public ClusterManager(ArrayList<ActorSystem> actorSystems, Map<Integer, ActorRef> actors) {
         this.actorSystems=actorSystems;
         this.actors=actors;
     }

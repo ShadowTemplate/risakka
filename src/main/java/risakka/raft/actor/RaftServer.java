@@ -7,12 +7,11 @@ import lombok.Getter;
 import lombok.Setter;
 import risakka.raft.log.LogEntry;
 import risakka.raft.log.StateMachineCommand;
-import risakka.raft.message.ServerMessage;
+import risakka.raft.message.MessageToServer;
 import risakka.raft.message.akka.ElectionTimeoutMessage;
 import risakka.raft.message.akka.SendHeartbeatMessage;
 import risakka.raft.miscellanea.PersistentState;
 import risakka.raft.miscellanea.State;
-import risakka.server.raft.*;
 import risakka.raft.message.rpc.server.AppendEntriesRequest;
 import risakka.raft.message.rpc.server.RequestVoteRequest;
 import risakka.util.Conf;
@@ -67,9 +66,9 @@ public class RaftServer extends UntypedActor {
     // TODO Promemoria: rischedulare immediatamente HeartbeatTimeout appena si ricevono notizie dal server.
 
     public void onReceive(Object message) throws Throwable {
-        if (message instanceof ServerMessage) {
+        if (message instanceof MessageToServer) {
             System.out.println(getSelf().path().toSerializationFormat() + " has received " + message.getClass().getSimpleName());
-            ((ServerMessage) message).onReceivedBy(this);
+            ((MessageToServer) message).onReceivedBy(this);
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);

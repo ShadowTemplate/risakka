@@ -2,10 +2,10 @@ package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
-import risakka.raft.message.ServerMessage;
+import risakka.raft.message.MessageToServer;
 
 @AllArgsConstructor
-public class AppendEntriesResponse extends ServerRPC implements ServerMessage {
+public class AppendEntriesResponse extends ServerRPC implements MessageToServer {
 
     private Integer term;
     private Boolean success;

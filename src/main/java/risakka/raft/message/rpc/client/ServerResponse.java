@@ -3,10 +3,10 @@ package risakka.raft.message.rpc.client;
 import akka.actor.ActorRef;
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftClient;
-import risakka.raft.message.ClientMessage;
+import risakka.raft.message.MessageToClient;
 
 @AllArgsConstructor
-public class ServerResponse implements ClientMessage {
+public class ServerResponse implements MessageToClient {
 
     private Status status;
     private Integer requestId;

@@ -2,10 +2,10 @@ package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
-import risakka.raft.message.ServerMessage;
+import risakka.raft.message.MessageToServer;
 
 @AllArgsConstructor
-public class RequestVoteRequest extends ServerRPC implements ServerMessage {
+public class RequestVoteRequest extends ServerRPC implements MessageToServer {
 
     private Integer term;
     // candidateId can be retrieved via Akka's getSender() method

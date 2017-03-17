@@ -2,11 +2,11 @@ package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
-import risakka.raft.message.ServerMessage;
+import risakka.raft.message.MessageToServer;
 import risakka.util.Conf;
 
 @AllArgsConstructor
-public class RequestVoteResponse extends ServerRPC implements ServerMessage {
+public class RequestVoteResponse extends ServerRPC implements MessageToServer {
 
     private Integer term;
     private Boolean voteGranted;

@@ -4,7 +4,7 @@ import risakka.raft.actor.RaftServer;
 
 import java.io.Serializable;
 
-public interface ServerMessage extends Serializable {
+public interface MessageToServer extends Serializable {
 
     void onReceivedBy(RaftServer server);
 }

@@ -2,13 +2,13 @@ package risakka.raft.message.akka;
 
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
-import risakka.raft.message.ServerMessage;
+import risakka.raft.message.MessageToServer;
 import risakka.raft.message.rpc.server.AppendEntriesRequest;
 
 import java.util.ArrayList;
 
 @AllArgsConstructor
-public class SendHeartbeatMessage implements ServerMessage {
+public class SendHeartbeatMessage implements MessageToServer {
 
     @Override
     public void onReceivedBy(RaftServer server) {

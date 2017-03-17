@@ -3,13 +3,13 @@ package risakka.raft.message.rpc.server;
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
-import risakka.raft.message.ServerMessage;
+import risakka.raft.message.MessageToServer;
 import risakka.raft.miscellanea.State;
 
 import java.util.List;
 
 @AllArgsConstructor
-public class AppendEntriesRequest extends ServerRPC implements ServerMessage {
+public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 
     private Integer term;
     // leaderId can be retrieved via Akka's getSender() method

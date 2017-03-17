@@ -5,7 +5,7 @@ import akka.actor.UntypedActor;
 import lombok.Getter;
 import lombok.Setter;
 import risakka.raft.message.rpc.client.ClientRequest;
-import risakka.raft.message.ClientMessage;
+import risakka.raft.message.MessageToClient;
 import risakka.raft.log.StateMachineCommand;
 import scala.concurrent.duration.Duration;
 
@@ -34,9 +34,9 @@ public class RaftClient extends UntypedActor {
 
     @Override
     public void onReceive(Object message) throws Throwable {
-        if (message instanceof ClientMessage) {
+        if (message instanceof MessageToClient) {
             System.out.println(getSelf().path().toSerializationFormat() + " has received " + message.getClass().getSimpleName());
-            ((ClientMessage) message).onReceivedBy(this);
+            ((MessageToClient) message).onReceivedBy(this);
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
