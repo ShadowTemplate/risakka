@@ -1,8 +1,7 @@
 package risakka;
 
 import akka.actor.Props;
-import lombok.AllArgsConstructor;
-import risakka.server.util.Conf;
+import risakka.util.Conf;
 
 import javax.swing.*;
 import java.awt.*;

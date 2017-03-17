@@ -5,15 +5,11 @@ import akka.actor.ActorSystem;
 import akka.actor.Props;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import risakka.server.util.Conf;
-import risakka.server.*;
+import risakka.util.Conf;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import risakka.server.util.Conf;
 
 //@AllArgsConstructor
 //@Getter

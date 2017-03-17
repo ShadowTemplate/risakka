@@ -14,7 +14,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import risakka.server.util.Conf;
+import risakka.util.Conf;
 
 public class ClusterLauncher {
     
