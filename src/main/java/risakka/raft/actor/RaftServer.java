@@ -77,6 +77,7 @@ public class RaftServer extends UntypedActor {
 
     public void toFollowerState() {
         state = State.FOLLOWER;
+        cancelSchedule(heartbeatSchedule); // Required when state changed from LEADER to FOLLOWER
         scheduleElection();
     }
 
@@ -97,7 +98,7 @@ public class RaftServer extends UntypedActor {
         }
     }
 
-    private void startHeartbeating() {  // TODO remember to stop heartbeating when no more leader
+    private void startHeartbeating() {
         cancelSchedule(heartbeatSchedule);
         // Schedule a new heartbeat for itself. Starts immediately and repeats every HEARTBEAT_FREQUENCY
         heartbeatSchedule = getContext().system().scheduler().schedule(
