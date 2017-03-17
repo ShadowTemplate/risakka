@@ -20,7 +20,7 @@ public class AppendEntriesResponse extends ServerRPC implements MessageToServer 
         onProcedureCall(server, term); // A
 
         String serverName = server.getSender().path().name(); //e.g. server0
-        int followerId = serverName.charAt(serverName.length() - 1);
+        int followerId = serverName.charAt(serverName.length() - 1); // TODO CHECK
 
         if (success) { //x
             //update nextIndex and matchIndex

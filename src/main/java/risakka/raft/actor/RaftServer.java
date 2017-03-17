@@ -89,6 +89,12 @@ public class RaftServer extends UntypedActor {
         state = State.LEADER;
         cancelSchedule(electionSchedule);
         startHeartbeating();
+
+        // Reinitialize volatile state after election
+        for (int i = 0; i < nextIndex.length; i++) { // B
+            nextIndex[i] = persistentState.getLog().size() + 1;
+            matchIndex[i] = 0;
+        }
     }
 
     private void startHeartbeating() {  // TODO remember to stop heartbeating when no more leader
@@ -163,10 +169,9 @@ public class RaftServer extends UntypedActor {
         }
     }
     
-    public void checkEntriesToCommit() { //call iff leader
-
+    public void checkEntriesToCommit() { // z //call iff leader
         for (int i = persistentState.getLog().size(); i > commitIndex; i--) {
-            int count = 1; //on how many server the entry is replicated (myself for sure)
+            int count = 1; // on how many server the entry is replicated (myself for sure)
 
             for (Integer index : matchIndex) {
                 if (index >= i && persistentState.getLog().get(i).getTermNumber().equals(persistentState.getCurrentTerm())) {
