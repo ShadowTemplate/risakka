@@ -16,7 +16,7 @@ public class Conf {
     public static final String BASE_DIR;
 
     static {
-        String propertiesFile = System.getProperty("risakka");
+        String propertiesFile = "properties";//System.getProperty("risakka");
         System.out.println("Trying to load properties from file: " + propertiesFile);
         Properties prop = new Properties();
         try {

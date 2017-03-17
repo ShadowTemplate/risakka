@@ -7,10 +7,12 @@ import risakka.server.util.Conf;
 import javax.swing.*;
 import java.awt.*;
 
-@AllArgsConstructor
+//@AllArgsConstructor
 public class ClusterManagerGUI implements Runnable {
 
     private final ClusterManager clusterManager;
+
+    public ClusterManagerGUI(ClusterManager clusterManager){this.clusterManager=clusterManager;}
 
     @Override
     public void run() {
@@ -40,12 +42,12 @@ public class ClusterManagerGUI implements Runnable {
                 switch (command[0]) {
                     case "KILL":
                         System.out.println("Killing process " + nodeId);
-                        clusterManager.getSystem().stop(clusterManager.getActors().get(nodeId));
+                        clusterManager.getSystem(nodeId).stop(clusterManager.getActors().get(nodeId));
                         break;
                     case "RESTART":
                         System.out.println("Restarting process " + nodeId);
-                        clusterManager.getSystem().stop(clusterManager.getActors().get(nodeId));
-                        clusterManager.getActors().put(nodeId, clusterManager.getSystem().actorOf(Props.create(FooNode.class), "server_" + nodeId));
+                        clusterManager.getSystem(nodeId).stop(clusterManager.getActors().get(nodeId));
+                        clusterManager.getActors().put(nodeId, clusterManager.getSystem(nodeId).actorOf(Props.create(FooNode.class, nodeId), "server_" + nodeId));
                         break;
                     default:
                         System.out.println("Operation not available");
