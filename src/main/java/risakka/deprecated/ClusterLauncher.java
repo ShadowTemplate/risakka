@@ -1,3 +1,4 @@
+package risakka.deprecated;
 
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;

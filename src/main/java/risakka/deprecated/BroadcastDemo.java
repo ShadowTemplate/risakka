@@ -1,3 +1,5 @@
+package risakka.deprecated;
+
 import akka.actor.*;
 import akka.routing.ActorRefRoutee;
 import akka.routing.BroadcastRoutingLogic;

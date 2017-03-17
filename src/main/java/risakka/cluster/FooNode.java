@@ -1,4 +1,4 @@
-package risakka;
+package risakka.cluster;
 
 import akka.actor.ActorRef;
 import akka.persistence.Recovery;

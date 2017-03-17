@@ -1,3 +1,5 @@
+package risakka.deprecated;
+
 import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 

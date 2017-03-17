@@ -1,4 +1,4 @@
-package risakka;
+package risakka.cluster;
 
 import akka.actor.Props;
 import risakka.util.Conf;
