@@ -8,6 +8,7 @@ public class ServerRPC {
         if (term > server.getPersistentState().getCurrentTerm()) {
             server.getPersistentState().updateCurrentTerm(term);
             server.toFollowerState();
+            server.setLeaderId(null);
         }
     }
 }

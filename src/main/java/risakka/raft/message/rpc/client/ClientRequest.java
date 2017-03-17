@@ -18,11 +18,8 @@ public class ClientRequest implements MessageToServer {
 
         switch (server.getState()) {
             case LEADER:
-                //append entry to local log
-                server.addEntryToLog(command); //u
-
-                //send appendEntriesRequest to followers
-                server.sendAppendEntriesToAllFollowers(); //w
+                //append entry to local log and send appendEntriesRequest to followers
+                server.addEntryToLogAndSendToFollowers(command); //u - w
 
                 //TODO (v) send answer back to the client when committed
 

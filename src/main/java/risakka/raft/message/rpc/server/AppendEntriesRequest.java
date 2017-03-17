@@ -34,9 +34,11 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
         //case FOLLOWER: // s
         //case LEADER: // s // Leader may receive AppendEntries from other (old, isolated) Leaders
         //case [ex-CANDIDATE]
-        if (term < server.getPersistentState().getCurrentTerm() ||
-                server.getPersistentState().getLog().size() < prevLogIndex ||
+        if (term < server.getPersistentState().getCurrentTerm()) {
+            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
+        } else if (server.getPersistentState().getLog().size() < prevLogIndex ||
                 !server.getPersistentState().getLog().get(prevLogIndex).getTermNumber().equals(prevLogTerm)) {
+            server.setLeaderId(server.getSender()); //the sender is the leader
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
         } else {
             int currIndex = prevLogIndex + 1;
@@ -51,6 +53,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
             if (leaderCommit > server.getCommitIndex()) {
                 server.setCommitIndex(Integer.min(leaderCommit, currIndex - 1));
             }
+            server.setLeaderId(server.getSender()); //the sender is the leader
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, currIndex - 1);
         }
         server.getSender().tell(response, server.getSelf());

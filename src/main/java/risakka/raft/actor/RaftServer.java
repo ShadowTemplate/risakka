@@ -1,5 +1,6 @@
 package risakka.raft.actor;
 
+import akka.actor.ActorRef;
 import akka.actor.Cancellable;
 import akka.actor.UntypedActor;
 import akka.routing.Router;
@@ -42,7 +43,7 @@ public class RaftServer extends UntypedActor {
     // volatile TODO is this right?
     private State state; // FOLLOWER / CANDIDATE / LEADER
     private Set<String> votersIds;
-
+    private ActorRef leaderId;
 
     // Akka fields
 
@@ -88,6 +89,7 @@ public class RaftServer extends UntypedActor {
 
     public void toLeaderState() {
         state = State.LEADER;
+        leaderId = getSelf();
         cancelSchedule(electionSchedule);
         startHeartbeating();
 
@@ -131,6 +133,7 @@ public class RaftServer extends UntypedActor {
     public void beginElection() { // d
         votersIds.clear();
         persistentState.updateCurrentTerm(persistentState.getCurrentTerm() + 1); // b
+        leaderId = null;
         getPersistentState().updateVotedFor(getSelf());
         votersIds.add(getSelf().path().toSerializationFormat()); // f
         // TODO change randomly my electionTimeout
@@ -141,10 +144,12 @@ public class RaftServer extends UntypedActor {
 
     // TODO move the following methods in an appropriate location
 
-    public void addEntryToLog(StateMachineCommand command) { //u
+    public void addEntryToLogAndSendToFollowers(StateMachineCommand command) { //u
         LogEntry entry = new LogEntry(command, persistentState.getCurrentTerm());
         int lastIndex = persistentState.getLog().size();
         persistentState.updateLog(lastIndex + 1, entry);
+        
+        sendAppendEntriesToAllFollowers(); //w
     }
 
     public void sendAppendEntriesToAllFollowers() { //w
