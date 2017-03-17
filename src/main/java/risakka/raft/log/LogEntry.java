@@ -1,7 +1,7 @@
 package risakka.raft.log;
 
 import lombok.Getter;
-import risakka.raft.persistence.Durable;
+import risakka.persistence.Durable;
 
 import lombok.AllArgsConstructor;
 

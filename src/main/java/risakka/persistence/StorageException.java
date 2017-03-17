@@ -1,4 +1,4 @@
-package risakka.raft.persistence;
+package risakka.persistence;
 
 public class StorageException extends RuntimeException {
 

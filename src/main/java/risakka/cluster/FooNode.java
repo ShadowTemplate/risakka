@@ -6,7 +6,7 @@ import akka.persistence.SnapshotOffer;
 import akka.persistence.UntypedPersistentActor;
 import lombok.Getter;
 import lombok.Setter;
-import risakka.raft.persistence.Durable;
+import risakka.persistence.Durable;
 import risakka.raft.log.LogEntry;
 import risakka.raft.miscellanea.SequentialContainer;
 import risakka.util.Conf;

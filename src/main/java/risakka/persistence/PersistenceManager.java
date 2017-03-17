@@ -1,7 +1,7 @@
-package risakka.raft.persistence;
+package risakka.persistence;
 
-import risakka.raft.persistence.unit.DiskStorage;
-import risakka.raft.persistence.unit.StorageUnit;
+import risakka.persistence.unit.DiskStorage;
+import risakka.persistence.unit.StorageUnit;
 
 public enum PersistenceManager {
     instance;

@@ -1,4 +1,4 @@
-package risakka.raft.persistence;
+package risakka.persistence;
 
 import java.io.Serializable;
 

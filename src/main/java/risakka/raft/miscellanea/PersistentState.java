@@ -4,8 +4,8 @@ import akka.actor.ActorRef;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import risakka.raft.log.LogEntry;
-import risakka.raft.persistence.Durable;
-import risakka.raft.persistence.PersistenceManager;
+import risakka.persistence.Durable;
+import risakka.persistence.PersistenceManager;
 
 @Getter
 @AllArgsConstructor

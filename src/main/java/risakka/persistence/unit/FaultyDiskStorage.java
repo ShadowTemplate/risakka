@@ -1,7 +1,7 @@
-package risakka.raft.persistence.unit;
+package risakka.persistence.unit;
 
-import risakka.raft.persistence.Durable;
-import risakka.raft.persistence.StorageException;
+import risakka.persistence.Durable;
+import risakka.persistence.StorageException;
 
 public class FaultyDiskStorage implements StorageUnit {
 
