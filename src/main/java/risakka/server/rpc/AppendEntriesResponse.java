@@ -15,7 +15,9 @@ public class AppendEntriesResponse extends RPC implements ServerMessage {
 
     @Override
     public void onReceivedBy(RaftServer server) {
-        onProcedureCall(server, term);
+        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse");
+
+        onProcedureCall(server, term); // A
 
         String serverName = server.getSender().path().name(); //e.g. server0
         int followerId = serverName.charAt(serverName.length() - 1);

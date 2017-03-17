@@ -22,7 +22,7 @@ public class AppendEntriesRequest extends RPC implements ServerMessage {
     public void onReceivedBy(RaftServer server) {
         System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
 
-        onProcedureCall(server, term);
+        onProcedureCall(server, term); // A
 
         AppendEntriesResponse response;
         if (server.getState() == State.CANDIDATE && term >= server.getPersistentState().getCurrentTerm()) { // o

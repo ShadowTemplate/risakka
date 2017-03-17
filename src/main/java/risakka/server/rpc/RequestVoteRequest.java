@@ -16,7 +16,7 @@ public class RequestVoteRequest extends RPC implements ServerMessage {
     public void onReceivedBy(RaftServer server) {
         System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteRequest");
 
-        onProcedureCall(server, term);  // TODO before tell?
+        onProcedureCall(server, term); // A
 
         RequestVoteResponse response;
         if (term < server.getPersistentState().getCurrentTerm()) { // m
