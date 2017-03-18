@@ -60,5 +60,6 @@ public class Conf {
         } catch (IllegalAccessException ex) {
             System.err.println("Error while displaying properties: " + ex.getMessage());
         }
+        System.out.println();
     }
 }

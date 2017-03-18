@@ -1,6 +1,5 @@
 package risakka.cluster;
 
-import akka.actor.ActorRef;
 import akka.persistence.Recovery;
 import akka.persistence.SnapshotOffer;
 import akka.persistence.UntypedPersistentActor;
@@ -11,20 +10,20 @@ import risakka.raft.miscellanea.PersistentState;
 import risakka.persistence.Durable;
 import risakka.raft.log.LogEntry;
 import risakka.raft.miscellanea.SequentialContainer;
+import risakka.raft.miscellanea.PersistentState;
 import risakka.util.Conf;
 
 @Getter
 @Setter
-public class FooNode extends UntypedPersistentActor {
-
-
+class FooNode extends UntypedPersistentActor {
 
     private PersistentState state;
     private int myId;
 
     public FooNode(int myId) {
-        this.myId= myId;
-        System.out.println("[Node "+ myId+"]Called constructor: " + getSelf().path().toSerializationFormat());
+        this.state = new PersistentState();
+        this.myId = myId;
+        System.out.println("[Node " + myId + "] Called constructor: " + getSelf().path().toSerializationFormat());
     }
 
     @Override
@@ -60,8 +59,6 @@ public class FooNode extends UntypedPersistentActor {
                 System.out.println("Sending message to: "+ address);
                 getContext().actorSelection(address).tell("Hi I'm "+ myId, getSelf());
             }
-
-
         }
 
         Recovery.create();
@@ -94,7 +91,5 @@ public class FooNode extends UntypedPersistentActor {
             System.out.println(message+ message.getClass().toString());
 
         }
-
-
     }
 }
