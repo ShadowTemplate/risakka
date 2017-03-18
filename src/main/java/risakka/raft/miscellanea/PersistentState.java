@@ -7,10 +7,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import risakka.raft.log.LogEntry;
 
+import java.io.Serializable;
+
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor // TODO Maybe we can set (access = AccessLevel.PRIVATE)
-public class PersistentState {
+public class PersistentState implements Serializable {
 
     // TODO check how to init them (with 0 or by loading from the persistent state)
     private Integer currentTerm = 0; // a

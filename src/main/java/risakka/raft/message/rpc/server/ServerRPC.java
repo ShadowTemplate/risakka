@@ -6,7 +6,7 @@ public class ServerRPC {
 
     public void onProcedureCall(RaftServer server, Integer term) { // A
         if (term > server.getPersistentState().getCurrentTerm()) {
-            server.getPersistentState().updateCurrentTerm(term);
+            server.getPersistentState().updateCurrentTerm(server, term);
             server.toFollowerState();
             server.setLeaderId(null);
         }

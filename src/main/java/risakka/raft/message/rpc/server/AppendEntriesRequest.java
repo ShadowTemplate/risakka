@@ -45,9 +45,9 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
             for (LogEntry entry : entries) {
                 if (server.getPersistentState().getLog().size() >= currIndex && // there is already an entry in that position
                         !server.getPersistentState().getLog().get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
-                    server.getPersistentState().deleteLogFrom(currIndex);
+                    server.getPersistentState().deleteLogFrom(server, currIndex);
                 }
-                server.getPersistentState().updateLog(currIndex, entry);
+                server.getPersistentState().updateLog(server, currIndex, entry);
                 currIndex++;
             }
             if (leaderCommit > server.getCommitIndex()) {
