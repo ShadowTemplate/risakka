@@ -3,6 +3,7 @@ package risakka.raft.actor;
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
 import akka.actor.UntypedActor;
+import akka.persistence.UntypedPersistentActor;
 import akka.routing.Router;
 import lombok.Getter;
 import lombok.Setter;
@@ -191,4 +192,6 @@ public class RaftServer extends UntypedActor {
             }
         }
     }
+
+
 }

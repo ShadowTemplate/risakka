@@ -35,4 +35,6 @@ public class PersistentState implements Durable {
         log.deleteFrom(i);
         PersistenceManager.instance.persist(this);
     }
+
+    public PersistentState copy(){ return new PersistentState(this.currentTerm, this.votedFor, this.log);}
 }

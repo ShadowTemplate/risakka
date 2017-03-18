@@ -6,6 +6,8 @@ import akka.persistence.SnapshotOffer;
 import akka.persistence.UntypedPersistentActor;
 import lombok.Getter;
 import lombok.Setter;
+import risakka.raft.log.StateMachineCommand;
+import risakka.raft.miscellanea.PersistentState;
 import risakka.persistence.Durable;
 import risakka.raft.log.LogEntry;
 import risakka.raft.miscellanea.SequentialContainer;
@@ -15,14 +17,7 @@ import risakka.util.Conf;
 @Setter
 public class FooNode extends UntypedPersistentActor {
 
-    private class PersistentState implements Durable {
-        // persistent fields  // TODO These 3 fields must be updated on stable storage before responding to ServerRPC
-        private Integer currentTerm = 0; // a // TODO check if init with 0 or by loading from the persistent state
-        private ActorRef votedFor;  // TODO reset to null after on currentTerm change?
-        private SequentialContainer<LogEntry> log;  // first index is 1
 
-        // TODO SETTER WITH UPDATE ON PERS STORAGE
-    }
 
     private PersistentState state;
     private int myId;
@@ -34,10 +29,22 @@ public class FooNode extends UntypedPersistentActor {
 
     @Override
     public void onReceiveCommand(Object message){
-        System.out.println("Received message: " + message.getClass().getSimpleName());
+
+        if(state == null) //Creating a empty state
+        {
+            LogEntry entry = new LogEntry(new StateMachineCommand("aa"), 2);
+            state = new PersistentState(1, getSender(), null);
+        }
+        if(message instanceof String)
+        {
+            saveSnapshot(state.copy());
+            System.out.println("Received message: " + (String) message + " from "+getSender());
+        }
+
+
     }
 
-    public String persistenceId() { return "id_"; }
+    public String persistenceId() { return "id_"+myId; }
 
     @Override
     public void preStart() throws Exception {
@@ -48,7 +55,7 @@ public class FooNode extends UntypedPersistentActor {
 
             if(myId != i)
             {
-                String address = "akka.tcp://raft-cluster@"+Conf.NODES_IPS[i]+":"+
+                String address = "akka.tcp://"+Conf.CLUSTER_NAME+"@"+Conf.NODES_IPS[i]+":"+
                         Conf.NODES_PORTS[i]+"/user/node";
                 System.out.println("Sending message to: "+ address);
                 getContext().actorSelection(address).tell("Hi I'm "+ myId, getSelf());
@@ -70,16 +77,15 @@ public class FooNode extends UntypedPersistentActor {
     public void onReceiveRecover(Object message) {
         System.out.println(getSelf().toString()+"- Recovered!");
 
-        //System.out.println(this.state.getContent().toString());
-        if(message instanceof PersistentState)
-        {
+        if(message instanceof String) //Called when a message has not been replied yet;
+        {                              //In this example, actors send String messages
 
-            PersistentState m = ((PersistentState) message);
+            String m = ((String) message);
 
-            //System.out.println(m);
+            System.out.println("This was a message not yet replied --> "+m);
 
         }
-        else if (message instanceof SnapshotOffer) {
+        else if (message instanceof SnapshotOffer) { //Called when an Actor recovers from durable storage
             PersistentState s = (PersistentState) ((SnapshotOffer) message).snapshot();
             System.out.println("Recovering from durable state = " + s);
             state = s;
