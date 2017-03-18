@@ -1,6 +1,5 @@
 package risakka.raft.message.rpc.client;
 
-import akka.actor.ActorRef;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import risakka.raft.actor.RaftClient;
@@ -12,7 +11,7 @@ public class RegisterClientResponse implements MessageToClient {
     
     private Status status;
     private Integer clientId;
-    private ActorRef leaderHint;
+    private Integer leaderHint;
 
     @Override
     public void onReceivedBy(RaftClient client) {
@@ -23,10 +22,10 @@ public class RegisterClientResponse implements MessageToClient {
             case NOT_LEADER:
                 System.out.println("not leader");
                 if (leaderHint != null) {
-                    leaderHint.tell(new RegisterClientRequest(), client.getSelf());
+                    client.registerContactingSpecificServer(leaderHint);
                 } else {
                     //try with a random server
-                    client.registerContactingRandomServer(1);
+                    client.registerContactingRandomServer();
                 }
                 break;
             case OK:

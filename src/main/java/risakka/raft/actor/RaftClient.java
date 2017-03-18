@@ -49,7 +49,7 @@ public class RaftClient extends UntypedActor {
     @Override
     public void preStart() throws Exception {
         super.preStart();
-        registerContactingRandomServer(1);
+        registerContactingRandomServer();
     }
     
     @Override
@@ -88,40 +88,51 @@ public class RaftClient extends UntypedActor {
     
     // TODO move the following methods in an appropriate location
     
-    public void registerContactingRandomServer(int attempts) {
+    public void registerContactingRandomServer() {
+        registerContactingRandomServer(1);
+    }
+    
+    private void registerContactingRandomServer(int attempts) {
         //contact a random server
-        System.out.println("Register contacting a random server - attempt " + attempts);
-        serverAddress = getRandomServerAddress();
-        
+        registerContactingSpecificServer(getRandomServerId(), attempts);
+    }
+    
+    private int getRandomServerId() {
+        int serverToContact = (int) (Math.random() * (Conf.SERVER_NUMBER));
+        System.out.println("Server chosen randomly: " + serverToContact);
+        return serverToContact;
+    }
+    
+    private ActorSelection buildAddressFromId(int id) {
+        //TODO split server and client conf
+        return getContext().actorSelection("akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[id] + ":"
+                + Conf.NODES_PORTS[id] + "/user/node");
+    }
+    
+    public void registerContactingSpecificServer(int serverId) {
+        registerContactingSpecificServer(serverId, 1);
+    }
+    
+    private void registerContactingSpecificServer(int serverId, int attempts) {
+        System.out.println("Contacting server " + serverId + " - attempt " + attempts);
+        serverAddress = buildAddressFromId(serverId);
         //send register request and wait
         Future<Object> future = Patterns.ask(serverAddress, new RegisterClientRequest(), answeringTimeout);
 
         try {
             processResponse(Await.result(future, answeringTimeout.duration()));
- 
+
         } catch (Exception ex) {
             Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
-            
-            if(attempts < MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
+
+            if (attempts < MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
                 registerContactingRandomServer(attempts + 1);
             } else { //stop
                 System.out.println("Crashing: no successful registration");
                 getContext().stop(getSelf());
             }
-            
-        }
-        
-        
-    }
-    
-    public ActorSelection getRandomServerAddress() {
-        int serverToContact = (int) (Math.random() * (Conf.SERVER_NUMBER));
-        System.out.println("Server to contact " + serverToContact);
 
-        //TODO split server and client conf
-        String address = "akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[serverToContact] + ":"
-                + Conf.NODES_PORTS[serverToContact] + "/user/node";
-        return getContext().actorSelection(address);
+        }
     }
     
     public static void main(String[] args) {
