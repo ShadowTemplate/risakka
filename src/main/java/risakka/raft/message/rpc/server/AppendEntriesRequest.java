@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
 import risakka.raft.message.MessageToServer;
-import risakka.raft.miscellanea.State;
+import risakka.raft.miscellanea.ServerState;
 
 import java.util.List;
 
@@ -25,7 +25,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
         onProcedureCall(server, term); // A
 
         AppendEntriesResponse response;
-        if (server.getState() == State.CANDIDATE && term >= server.getPersistentState().getCurrentTerm()) { // o
+        if (server.getState() == ServerState.CANDIDATE && term >= server.getPersistentState().getCurrentTerm()) { // o
             System.out.println(server.getSelf().path().name() + " recognizes " + server.getSender().path().name() +
                     " as LEADER and will switch to FOLLOWER state");
             server.toFollowerState();

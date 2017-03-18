@@ -1,6 +1,6 @@
 package risakka.raft.miscellanea;
 
-public enum State {
+public enum ServerState {
     FOLLOWER,
     CANDIDATE,
     LEADER

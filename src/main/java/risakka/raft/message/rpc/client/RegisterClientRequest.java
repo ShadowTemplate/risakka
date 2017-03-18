@@ -3,7 +3,7 @@ package risakka.raft.message.rpc.client;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToServer;
-import risakka.raft.miscellanea.State;
+import risakka.raft.miscellanea.ServerState;
 
 public class RegisterClientRequest implements MessageToServer {
 
@@ -13,7 +13,7 @@ public class RegisterClientRequest implements MessageToServer {
 
         RegisterClientResponse response;
         
-        if (server.getState() != State.LEADER) {
+        if (server.getState() != ServerState.LEADER) {
             response = new RegisterClientResponse(Status.NOT_LEADER, null, server.getLeaderId());
             server.getSender().tell(response, server.getSelf());
         } else {

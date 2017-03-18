@@ -13,7 +13,7 @@ public class SendHeartbeatMessage implements MessageToServer {
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println(server.getSelf().path().name() + " is going to send heartbeat as a LEADER...");
-        // assert state == State.LEADER;
+        // assert state == ServerState.LEADER;
         sendHeartbeat(server);
     }
 

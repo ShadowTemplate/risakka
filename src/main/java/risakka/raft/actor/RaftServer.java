@@ -12,7 +12,7 @@ import risakka.raft.message.MessageToServer;
 import risakka.raft.message.akka.ElectionTimeoutMessage;
 import risakka.raft.message.akka.SendHeartbeatMessage;
 import risakka.raft.miscellanea.PersistentState;
-import risakka.raft.miscellanea.State;
+import risakka.raft.miscellanea.ServerState;
 import risakka.raft.message.rpc.server.AppendEntriesRequest;
 import risakka.raft.message.rpc.server.RequestVoteRequest;
 import risakka.util.Conf;
@@ -41,7 +41,7 @@ public class RaftServer extends UntypedPersistentActor {
     // Raft other fields
 
     // volatile TODO is this right?
-    private State state; // FOLLOWER / CANDIDATE / LEADER
+    private ServerState state; // FOLLOWER / CANDIDATE / LEADER
     private Set<String> votersIds;
     private Integer leaderId;
 
@@ -91,18 +91,18 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     public void toFollowerState() {
-        state = State.FOLLOWER;
+        state = ServerState.FOLLOWER;
         cancelSchedule(heartbeatSchedule); // Required when state changed from LEADER to FOLLOWER
         scheduleElection();
     }
 
     public void toCandidateState() {
-        state = State.CANDIDATE; // c
+        state = ServerState.CANDIDATE; // c
         onConversionToCandidate(); // e
     }
 
     public void toLeaderState() {
-        state = State.LEADER;
+        state = ServerState.LEADER;
         leaderId = getServerId();
         cancelSchedule(electionSchedule);
         startHeartbeating();
