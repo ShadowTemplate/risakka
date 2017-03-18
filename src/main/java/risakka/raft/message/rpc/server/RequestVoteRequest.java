@@ -23,7 +23,7 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
         } else if ((server.getPersistentState().getVotedFor() == null || server.getPersistentState().getVotedFor().equals(server.getSender())) &&
                 isLogUpToDate(server, lastLogIndex, lastLogTerm)) { // n
-            server.getPersistentState().updateVotedFor(server.getSelf());
+            server.getPersistentState().updateVotedFor(server, server.getSelf());
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), true);
         } else {
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
