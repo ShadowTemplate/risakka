@@ -1,6 +1,5 @@
 package risakka.raft.actor;
 
-import akka.actor.ActorRef;
 import akka.actor.Cancellable;
 import akka.persistence.SnapshotOffer;
 import akka.persistence.UntypedPersistentActor;
@@ -44,7 +43,7 @@ public class RaftServer extends UntypedPersistentActor {
     // volatile TODO is this right?
     private State state; // FOLLOWER / CANDIDATE / LEADER
     private Set<String> votersIds;
-    private ActorRef leaderId;
+    private Integer leaderId;
 
     // Akka fields
 
@@ -104,7 +103,7 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void toLeaderState() {
         state = State.LEADER;
-        leaderId = getSelf();
+        leaderId = getServerId();
         cancelSchedule(electionSchedule);
         startHeartbeating();
 
@@ -206,7 +205,11 @@ public class RaftServer extends UntypedPersistentActor {
             }
         }
     }
-
+    
+    public int getServerId() {
+        String serverName = getSender().path().name(); //e.g. server0
+        return serverName.charAt(serverName.length() - 1); // TODO CHECK
+    }
 
     @Override
     public String persistenceId() {
