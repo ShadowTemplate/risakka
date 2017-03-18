@@ -2,7 +2,7 @@ package risakka.raft.actor;
 
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
-import akka.actor.UntypedActor;
+import akka.persistence.SnapshotOffer;
 import akka.persistence.UntypedPersistentActor;
 import akka.routing.Router;
 import lombok.Getter;
@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 @Getter
 @Setter
-public class RaftServer extends UntypedActor {
+public class RaftServer extends UntypedPersistentActor {
 
     // Raft paper fields
     private PersistentState persistentState;
@@ -67,13 +67,27 @@ public class RaftServer extends UntypedActor {
 
     // TODO Promemoria: rischedulare immediatamente HeartbeatTimeout appena si ricevono notizie dal server.
 
-    public void onReceive(Object message) throws Throwable {
+    @Override
+    public void onReceiveCommand(Object message) throws Throwable {
+        System.out.println(getSelf().path().toSerializationFormat() + " has received command " + message.getClass().getSimpleName());
         if (message instanceof MessageToServer) {
-            System.out.println(getSelf().path().toSerializationFormat() + " has received " + message.getClass().getSimpleName());
             ((MessageToServer) message).onReceivedBy(this);
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
+        }
+    }
+
+    @Override
+    public void onReceiveRecover(Object message) throws Throwable {
+        System.out.println(getSelf().path().toSerializationFormat() + " has received recover " + message.getClass().getSimpleName());
+        if (message instanceof SnapshotOffer) { // called when server recovers from durable storage
+            persistentState = (PersistentState) ((SnapshotOffer) message).snapshot();
+            System.out.println(getSelf().path().toSerializationFormat() + " has loaded old " + persistentState.getClass().getSimpleName());
+        } else {
+            System.out.println(getSelf().path().toSerializationFormat() + " is unable to process "
+                    + message.getClass().getSimpleName() + ". Forwarding to onReceiveCommand()...");
+            onReceiveCommand(message);
         }
     }
 
@@ -133,9 +147,9 @@ public class RaftServer extends UntypedActor {
 
     public void beginElection() { // d
         votersIds.clear();
-        persistentState.updateCurrentTerm(persistentState.getCurrentTerm() + 1); // b
+        persistentState.updateCurrentTerm(this, persistentState.getCurrentTerm() + 1); // b
         leaderId = null;
-        getPersistentState().updateVotedFor(getSelf());
+        getPersistentState().updateVotedFor(this, getSelf());
         votersIds.add(getSelf().path().toSerializationFormat()); // f
         // TODO change randomly my electionTimeout
         scheduleElection(); // g
@@ -148,7 +162,7 @@ public class RaftServer extends UntypedActor {
     public void addEntryToLogAndSendToFollowers(StateMachineCommand command) { //u
         LogEntry entry = new LogEntry(command, persistentState.getCurrentTerm());
         int lastIndex = persistentState.getLog().size();
-        persistentState.updateLog(lastIndex + 1, entry);
+        persistentState.updateLog(this, lastIndex + 1, entry);
         
         sendAppendEntriesToAllFollowers(); //w
     }
@@ -194,4 +208,8 @@ public class RaftServer extends UntypedActor {
     }
 
 
+    @Override
+    public String persistenceId() {
+        return "id_"; // TODO check
+    }
 }

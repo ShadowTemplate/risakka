@@ -7,10 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.miscellanea.PersistentState;
-import risakka.persistence.Durable;
 import risakka.raft.log.LogEntry;
-import risakka.raft.miscellanea.SequentialContainer;
-import risakka.raft.miscellanea.PersistentState;
 import risakka.util.Conf;
 
 @Getter
@@ -27,37 +24,34 @@ class FooNode extends UntypedPersistentActor {
     }
 
     @Override
-    public void onReceiveCommand(Object message){
+    public void onReceiveCommand(Object message) {
 
-        if(state == null) //Creating a empty state
-        {
+        if (state == null) { //Creating a empty state
             LogEntry entry = new LogEntry(new StateMachineCommand("aa"), 2);
             state = new PersistentState(1, getSender(), null);
         }
-        if(message instanceof String)
-        {
+
+        if (message instanceof String) {
             saveSnapshot(state.copy());
-            System.out.println("Received message: " + (String) message + " from "+getSender());
+            System.out.println("Received message: " + message + " from " + getSender());
         }
-
-
     }
 
-    public String persistenceId() { return "id_"+myId; }
+    public String persistenceId() {
+        return "id_" + myId;
+    }
 
     @Override
     public void preStart() throws Exception {
         super.preStart();
         System.out.println("Called preStart: " + getSelf().path().toSerializationFormat());
 
-        for (int i=0; i< Conf.NODES_PORTS.length; i++ ) {
-
-            if(myId != i)
-            {
-                String address = "akka.tcp://"+Conf.CLUSTER_NAME+"@"+Conf.NODES_IPS[i]+":"+
-                        Conf.NODES_PORTS[i]+"/user/node";
-                System.out.println("Sending message to: "+ address);
-                getContext().actorSelection(address).tell("Hi I'm "+ myId, getSelf());
+        for (int i = 0; i < Conf.NODES_PORTS.length; i++) {
+            if (myId != i) {
+                String address = "akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[i] + ":" +
+                        Conf.NODES_PORTS[i] + "/user/node";
+                System.out.println("Sending message to: " + address);
+                getContext().actorSelection(address).tell("Hi I'm " + myId, getSelf());
             }
         }
 
@@ -72,23 +66,18 @@ class FooNode extends UntypedPersistentActor {
 
     @Override
     public void onReceiveRecover(Object message) {
-        System.out.println(getSelf().toString()+"- Recovered!");
+        System.out.println(getSelf().toString() + "- Recovered!");
 
-        if(message instanceof String) //Called when a message has not been replied yet;
-        {                              //In this example, actors send String messages
-
+        if (message instanceof String) { //Called when a message has not been replied yet;
+                                      //In this example, actors send String messages
             String m = ((String) message);
-
-            System.out.println("This was a message not yet replied --> "+m);
-
-        }
-        else if (message instanceof SnapshotOffer) { //Called when an Actor recovers from durable storage
+            System.out.println("This was a message not yet replied --> " + m);
+        } else if (message instanceof SnapshotOffer) { //Called when an Actor recovers from durable storage
             PersistentState s = (PersistentState) ((SnapshotOffer) message).snapshot();
             System.out.println("Recovering from durable state = " + s);
             state = s;
-        }
-        else{
-            System.out.println(message+ message.getClass().toString());
+        } else {
+            System.out.println(message + message.getClass().toString());
 
         }
     }
