@@ -1,11 +1,13 @@
 package risakka.raft.message.rpc.client;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
 import risakka.raft.log.StateMachineCommand;
 
 @AllArgsConstructor
+@Getter
 public class ClientRequest implements MessageToServer {
 
     private Integer requestId;
@@ -28,7 +30,7 @@ public class ClientRequest implements MessageToServer {
             case FOLLOWER:
             case CANDIDATE:
                 //TODO send hint who is the leader
-                response = new ServerResponse(Status.NOT_LEADER, null, null);
+                response = new ServerResponse(Status.NOT_LEADER, null, server.getLeaderId());
                 break;
         }
 
