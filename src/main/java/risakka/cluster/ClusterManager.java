@@ -22,6 +22,19 @@ public class ClusterManager {
     private final Map<Integer, ActorRef> actors;
 
 
+    private static void deleteFolderRecursively(File path) {
+        File[] files = path.listFiles();
+        System.out.println("Cleaning folder:" + path.toString());
+        for (File file : files) {
+            if (file.isDirectory()) {
+                deleteFolderRecursively(file);
+            }
+            file.delete();
+        }
+        path.delete();
+    }
+
+
     public static void main(String[] args) {
 
         // Initializing every Actor with a different actor system, so that avery one has a different
@@ -29,6 +42,12 @@ public class ClusterManager {
 
         Map<Integer, ActorRef> actors = new HashMap<>();
         ArrayList<ActorSystem> actorSystems = new ArrayList<>();
+
+        File a = new File("logs/");
+        if (a.exists()) {
+            deleteFolderRecursively(a);
+        }
+
 
         for (int i = 0; i < Conf.SERVER_NUMBER; i++) {
 
