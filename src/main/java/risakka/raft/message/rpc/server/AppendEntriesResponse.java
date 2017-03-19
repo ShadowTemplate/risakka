@@ -15,23 +15,25 @@ public class AppendEntriesResponse extends ServerRPC implements MessageToServer 
 
     @Override
     public void onReceivedBy(RaftServer server) {
-        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse");
+        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse with success: ");
 
         onProcedureCall(server, term); // A
 
-        int followerId = server.getServerId();
+        String followerName = server.getSender().path().name(); //e.g. node_0
+        int followerId = Character.getNumericValue(followerName.charAt(followerName.length() - 1));
+        System.out.println("follower " + followerId);
 
         if (success) { //x
             //update nextIndex and matchIndex
-            server.getNextIndex()[followerId] = lastEntryIndex;
-            server.getMatchIndex()[followerId] = lastEntryIndex;
-            
+            server.updateNextIndexAtIndex(followerId, lastEntryIndex + 1);
+            server.updateMatchIndexAtIndex(followerId, lastEntryIndex);
+                        
             //check if some entries can be committed
             server.checkEntriesToCommit();
             
         } else { //y
             //since failed, try again decrementing nextIndex
-            server.getNextIndex()[followerId] -= 1;
+            server.updateNextIndexAtIndex(followerId, server.getNextIndex()[followerId] - 1);
             server.sendAppendEntriesToOneFollower(server, followerId);
         }
 

@@ -2,8 +2,17 @@ package risakka.raft.actor;
 
 import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
-import akka.persistence.*;
+import akka.persistence.RecoveryCompleted;
+import akka.persistence.SaveSnapshotFailure;
+import akka.persistence.SaveSnapshotSuccess;
+import akka.persistence.SnapshotOffer;
+import akka.persistence.UntypedPersistentActor;
 import akka.routing.Router;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.Setter;
 import risakka.raft.log.LogEntry;
@@ -11,21 +20,17 @@ import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToServer;
 import risakka.raft.message.akka.ElectionTimeoutMessage;
 import risakka.raft.message.akka.SendHeartbeatMessage;
-import risakka.raft.miscellanea.PersistentState;
-import risakka.raft.miscellanea.ServerState;
-import risakka.raft.message.rpc.server.AppendEntriesRequest;
-import risakka.raft.message.rpc.server.RequestVoteRequest;
-import risakka.util.Conf;
-import risakka.util.Util;
-import scala.concurrent.duration.Duration;
-
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-
 import risakka.raft.message.rpc.client.RegisterClientResponse;
 import risakka.raft.message.rpc.client.ServerResponse;
 import risakka.raft.message.rpc.client.Status;
+import risakka.raft.message.rpc.server.AppendEntriesRequest;
+import risakka.raft.message.rpc.server.RequestVoteRequest;
 import risakka.raft.miscellanea.LRUSessionMap;
+import risakka.raft.miscellanea.PersistentState;
+import risakka.raft.miscellanea.ServerState;
+import risakka.util.Conf;
+import risakka.util.Util;
+import scala.concurrent.duration.Duration;
 
 @Getter
 @Setter
@@ -39,8 +44,8 @@ public class RaftServer extends UntypedPersistentActor {
     private Integer lastApplied;
 
     // leader volatile fields // TODO REINITIALIZE AFTER ELECTION
-    private Integer[] nextIndex;
-    private Integer[] matchIndex;
+    private int[] nextIndex;
+    private int[] matchIndex;
 
 
     // Raft other fields
@@ -63,6 +68,13 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println("Creating RaftServer");
         votersIds = new HashSet<>();
         clientSessionMap = new LRUSessionMap<>(Conf.MAX_CLIENT_SESSIONS);
+        persistentState = new PersistentState();
+        nextIndex = new int[Conf.SERVER_NUMBER];
+        matchIndex = new int[Conf.SERVER_NUMBER];
+        this.initializeNextAndMatchIndex();
+        commitIndex = 0;
+        lastApplied = 0;
+        leaderId = null;
     }
 
     @Override
@@ -123,10 +135,7 @@ public class RaftServer extends UntypedPersistentActor {
         startHeartbeating();
 
         // Reinitialize volatile state after election
-        for (int i = 0; i < nextIndex.length; i++) { // B
-            nextIndex[i] = persistentState.getLog().size() + 1;
-            matchIndex[i] = 0;
-        }
+        initializeNextAndMatchIndex(); //B
     }
 
     private void startHeartbeating() {
@@ -168,11 +177,44 @@ public class RaftServer extends UntypedPersistentActor {
         // TODO change randomly my electionTimeout
         scheduleElection(); // g
         System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
-        broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), 0, 0), getSelf()); // h // TODO properly set last 2 params
+        
+        int lastLogIndex = persistentState.getLog().size();
+        int lastLogterm;
+        if (lastLogIndex > 0) {
+            lastLogterm = persistentState.getLog().get(lastLogIndex).getTermNumber();
+        } else { //no entry committed yet
+            lastLogterm = 0;
+        }
+        for (int i = 0; i < Conf.SERVER_NUMBER; i++) { //TODO should be broadcast
+            if(i != getServerId()) { //not myself
+                buildAddressFromId(i).tell(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogterm), getSelf());
+            }
+        }
+//        broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), 0, 0), getSelf()); // h // TODO properly set last 2 params
     }
 
     // TODO move the following methods in an appropriate location
-
+    
+    public void initializeNextAndMatchIndex() { //B
+        for (int i = 0; i < nextIndex.length; i++) {
+            nextIndex[i] = persistentState.getLog().size() + 1;
+            matchIndex[i] = 0;
+        }
+    }
+    
+    public void updateNextIndexAtIndex(int index, int value) {
+        nextIndex[index] = value;
+    }
+    
+    public void updateMatchIndexAtIndex(int index, int value) {
+        matchIndex[index] = value;
+    }
+    
+    private ActorSelection buildAddressFromId(int id) {
+        return getContext().actorSelection("akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[id] + ":"
+                + Conf.NODES_PORTS[id] + "/user/node_" + id);
+    }
+    
     public void addEntryToLogAndSendToFollowers(StateMachineCommand command) { //u
         LogEntry entry = new LogEntry(command, persistentState.getCurrentTerm());
         int lastIndex = persistentState.getLog().size();
@@ -183,28 +225,37 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void sendAppendEntriesToAllFollowers() { //w
         for (int i = 0; i < nextIndex.length; i++) {
-            sendAppendEntriesToOneFollower(this, i);
+            if(i != getServerId()) { //if not myself
+                sendAppendEntriesToOneFollower(this, i);
+            }
         }
     }
 
     public void sendAppendEntriesToOneFollower(RaftServer server, Integer followerId) { //w
         int lastIndex = server.getPersistentState().getLog().size();
         if (lastIndex >= nextIndex[followerId]) {
-            //previous entry w.r.t. the new ones that has to match in order to accept the new ones
-            LogEntry prevEntry = server.getPersistentState().getLog().get(nextIndex[followerId] - 1);
-            Integer prevLogTerm = prevEntry.getTermNumber();
-
+            
+            ActorSelection actor = buildAddressFromId(followerId);
             //get new entries
             List<LogEntry> entries = new ArrayList<>();
             for (int j = nextIndex[followerId]; j <= lastIndex; j++) {
                 entries.add(server.getPersistentState().getLog().get(j));
             }
-            //TODO send request to follower i
-            new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), nextIndex[followerId] - 1, prevLogTerm, entries, server.getCommitIndex());
+            
+            if (nextIndex[followerId] > 1) { //at least one entry is already committed
+                //previous entry w.r.t. the new ones that has to match in order to accept the new ones
+                LogEntry prevEntry = server.getPersistentState().getLog().get(nextIndex[followerId] - 1);
+                Integer prevLogTerm = prevEntry.getTermNumber();
+
+                actor.tell(new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), nextIndex[followerId] - 1, prevLogTerm, entries, server.getCommitIndex()), getSelf());
+            } else { //first entry - previous entry fields are null
+                actor.tell(new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), null, null, entries, server.getCommitIndex()), getSelf());
+            }
         }
     }
 
     public void checkEntriesToCommit() { // z //call iff leader
+        System.out.println("Checking if some entries can be committed");
         int oldCommitIndex = commitIndex;
         for (int i = persistentState.getLog().size(); i > commitIndex; i--) {
             int count = 1; // on how many server the entry is replicated (myself for sure)
@@ -237,12 +288,13 @@ public class RaftServer extends UntypedPersistentActor {
             } else {
                 //TODO session expired, command should not be executed
             }
+            //TODO update lastApplied
         }
     }
 
     public int getServerId() {
-        String serverName = getSelf().path().name(); //e.g. server0
-        return serverName.charAt(serverName.length() - 1); // TODO CHECK
+        String serverName = getSelf().path().name(); //e.g. node_0
+        return Character.getNumericValue(serverName.charAt(serverName.length() - 1));
     }
 
     @Override

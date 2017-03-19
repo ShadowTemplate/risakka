@@ -1,8 +1,9 @@
 package risakka.raft.miscellanea;
 
+import java.io.Serializable;
 import java.util.*;
 
-public class SequentialContainer<E> {
+public class SequentialContainer<E> implements Serializable {
 
     private static final int DEFAULT_INITIAL_CAPACITY = 25;
     private ArrayList<E> entries;

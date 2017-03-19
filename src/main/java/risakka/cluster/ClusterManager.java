@@ -13,6 +13,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import risakka.raft.actor.RaftServer;
 
 @AllArgsConstructor
 @Getter
@@ -72,7 +73,7 @@ public class ClusterManager {
             ActorSystem system = ActorSystem.create(Conf.CLUSTER_NAME, config);
 
             actorSystems.add(system);
-            actors.put(i, system.actorOf(Props.create(FooNode.class, i), "node"));
+            actors.put(i, system.actorOf(Props.create(RaftServer.class), "node_" + i));
         }
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors);
         new ClusterManagerGUI(clusterManager).run();

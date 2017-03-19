@@ -36,12 +36,17 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
         //case [ex-CANDIDATE]
         if (term < server.getPersistentState().getCurrentTerm()) {
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
-        } else if (server.getPersistentState().getLog().size() < prevLogIndex ||
-                !server.getPersistentState().getLog().get(prevLogIndex).getTermNumber().equals(prevLogTerm)) {
+        } else if (prevLogIndex != null && (server.getPersistentState().getLog().size() < prevLogIndex || //prevLogIndex == null when log is empty
+                !server.getPersistentState().getLog().get(prevLogIndex).getTermNumber().equals(prevLogTerm))) {
             server.setLeaderId(server.getServerId()); //the sender is the leader
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
         } else {
-            int currIndex = prevLogIndex + 1;
+            int currIndex;
+            if(prevLogIndex == null) { //first entry to commit
+                currIndex = 1;
+            } else {
+                currIndex = prevLogIndex + 1;
+            }
             for (LogEntry entry : entries) {
                 if (server.getPersistentState().getLog().size() >= currIndex && // there is already an entry in that position
                         !server.getPersistentState().getLog().get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different

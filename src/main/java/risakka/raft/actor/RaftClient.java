@@ -48,7 +48,7 @@ public class RaftClient extends UntypedActor {
 
     @Override
     public void preStart() throws Exception {
-        super.preStart();
+        super.preStart();        
         registerContactingRandomServer();
     }
     
@@ -106,7 +106,7 @@ public class RaftClient extends UntypedActor {
     private ActorSelection buildAddressFromId(int id) {
         //TODO split server and client conf
         return getContext().actorSelection("akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[id] + ":"
-                + Conf.NODES_PORTS[id] + "/user/node");
+                + Conf.NODES_PORTS[id] + "/user/node_" + id);
     }
     
     public void registerContactingSpecificServer(int serverId) {

@@ -15,7 +15,7 @@ public class RegisterClientRequest implements MessageToServer {
             RegisterClientResponse response = new RegisterClientResponse(Status.NOT_LEADER, null, server.getLeaderId());
             server.getSender().tell(response, server.getSelf());
         } else {
-            server.addEntryToLogAndSendToFollowers(new StateMachineCommand("Register akka.tcp address", null, null)); //TODO register command sintax: Register actor_address         
+            server.addEntryToLogAndSendToFollowers(new StateMachineCommand("Register " + "akka.tcp://raft-cluster@127.0.0.1:20000/user/client", null, null)); //TODO register command sintax: Register actor_address         
             //when the entry will be committed, the client session will be allocated and an answer will be sent back to the client         
         }
         
