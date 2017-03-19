@@ -10,4 +10,6 @@ import java.io.Serializable;
 public class StateMachineCommand implements Serializable {
 
     private String command; // could be change to something else
+    private Integer clientId; //client that issued the request
+    private Integer seqNumber; //null if register request
 }

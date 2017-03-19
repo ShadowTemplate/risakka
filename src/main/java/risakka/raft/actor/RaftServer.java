@@ -1,5 +1,6 @@
 package risakka.raft.actor;
 
+import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
 import akka.persistence.SnapshotOffer;
 import akka.persistence.UntypedPersistentActor;
@@ -21,6 +22,10 @@ import scala.concurrent.duration.Duration;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import risakka.raft.message.rpc.client.RegisterClientResponse;
+import risakka.raft.message.rpc.client.ServerResponse;
+import risakka.raft.message.rpc.client.Status;
+import risakka.raft.miscellanea.LRUSessionMap;
 
 @Getter
 @Setter
@@ -43,7 +48,8 @@ public class RaftServer extends UntypedPersistentActor {
     // volatile TODO is this right?
     private ServerState state; // FOLLOWER / CANDIDATE / LEADER
     private Set<String> votersIds;
-    private Integer leaderId;
+    private Integer leaderId; //last leader known
+    private LRUSessionMap<Integer, ActorSelection> clientSessionMap;
 
     // Akka fields
 
@@ -56,6 +62,7 @@ public class RaftServer extends UntypedPersistentActor {
     public RaftServer() {
         System.out.println("Creating RaftServer");
         votersIds = new HashSet<>();
+        clientSessionMap = new LRUSessionMap<>(Conf.MAX_CLIENT_SESSIONS);
     }
 
     @Override
@@ -162,7 +169,7 @@ public class RaftServer extends UntypedPersistentActor {
         LogEntry entry = new LogEntry(command, persistentState.getCurrentTerm());
         int lastIndex = persistentState.getLog().size();
         persistentState.updateLog(this, lastIndex + 1, entry);
-        
+
         sendAppendEntriesToAllFollowers(); //w
     }
 
@@ -188,8 +195,9 @@ public class RaftServer extends UntypedPersistentActor {
             new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), nextIndex[followerId] - 1, prevLogTerm, entries, server.getCommitIndex());
         }
     }
-    
+
     public void checkEntriesToCommit() { // z //call iff leader
+        int oldCommitIndex = commitIndex;
         for (int i = persistentState.getLog().size(); i > commitIndex; i--) {
             int count = 1; // on how many server the entry is replicated (myself for sure)
 
@@ -201,13 +209,31 @@ public class RaftServer extends UntypedPersistentActor {
 
             if (count > Conf.SERVER_NUMBER / 2) {
                 commitIndex = i;
+                executeCommands(oldCommitIndex + 1, commitIndex);
                 break;
             }
         }
     }
-    
+
+    public void executeCommands(int minIndex, int maxIndex) {
+        for (int j = minIndex; j <= maxIndex; j++) { //v send answer back to the client when committed
+            StateMachineCommand command = persistentState.getLog().get(j).getCommand();
+            if (command.getCommand().startsWith("Register")) {
+                String address = command.getCommand().substring(9); //format Register client_address
+                clientSessionMap.put(j, getContext().actorSelection(address)); //allocate new session
+                clientSessionMap.get(j).tell(new RegisterClientResponse(Status.OK, j, null), getSelf());
+            } else if (clientSessionMap.containsKey(command.getClientId())) {
+                //TODO execute command on state machine iff command with that seqNumber not already performed 
+                String result = "result of command";
+                clientSessionMap.get(command.getClientId()).tell(new ServerResponse(Status.OK, result, null), getSelf());
+            } else {
+                //TODO session expired, command should not be executed
+            }
+        }
+    }
+
     public int getServerId() {
-        String serverName = getSender().path().name(); //e.g. server0
+        String serverName = getSelf().path().name(); //e.g. server0
         return serverName.charAt(serverName.length() - 1); // TODO CHECK
     }
 

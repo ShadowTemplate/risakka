@@ -17,7 +17,6 @@ import risakka.raft.log.StateMachineCommand;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import risakka.raft.message.rpc.client.RegisterClientRequest;
@@ -31,7 +30,7 @@ import scala.concurrent.Future;
 public class RaftClient extends UntypedActor {
 
     private ActorRef client;
-    private static AtomicInteger seqNumber = new AtomicInteger(0);
+    private Integer seqNumber;
     private ActorSelection serverAddress;
     
     
@@ -41,8 +40,9 @@ public class RaftClient extends UntypedActor {
     public RaftClient() {
         System.out.println("Creating RaftClient");
         this.client = getSelf();
+        this.seqNumber = 0;
         scheduleRequest();
-        MAX_ATTEMPTS = Conf.SERVER_NUMBER; //TODO set an appropriate number
+        this.MAX_ATTEMPTS = Conf.SERVER_NUMBER; //TODO set an appropriate number
         this.answeringTimeout = new Timeout(Duration.create(1000, TimeUnit.MILLISECONDS));  //TODO set an appropriate timeout
     }
 
@@ -58,7 +58,7 @@ public class RaftClient extends UntypedActor {
         
         //just to automatically send new client requests
         if (message instanceof ClientRequest) {
-            System.out.println(getSelf().path().toSerializationFormat() + " sends client request with id " + ((ClientRequest)message).getRequestId());
+            System.out.println(getSelf().path().toSerializationFormat() + " sends client request with id " + ((ClientRequest)message).getCommand().getSeqNumber());
             serverAddress.tell(message, client);
             
         } else {
@@ -79,11 +79,11 @@ public class RaftClient extends UntypedActor {
     }
 
     private void scheduleRequest() {
-        int requestNum = seqNumber.getAndIncrement();
         getContext().system().scheduler().schedule(Duration.Zero(),
                 Duration.create(400, TimeUnit.MILLISECONDS), client,
-                new ClientRequest(requestNum, new StateMachineCommand("command" + requestNum)), // TODO DOESN'T INCREMENT EVERY TIME -> the problem is that it's scheduled once and it's not performed each time
+                new ClientRequest(new StateMachineCommand("command" + seqNumber, 0, seqNumber)), 
                 getContext().system().dispatcher(), getSelf());
+        seqNumber++; // TODO DOESN'T INCREMENT EVERY TIME -> the problem is that it's scheduled once and it's not performed each time
     }
     
     // TODO move the following methods in an appropriate location

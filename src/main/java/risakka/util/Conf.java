@@ -9,6 +9,7 @@ public class Conf {
     public static final String CLUSTER_NAME;
     public static final int SERVER_NUMBER;
     public static final int HEARTBEAT_FREQUENCY;  // TODO make sure it is consistent with the avg broadcasting time
+    public static final int MAX_CLIENT_SESSIONS;
     
     public static final String[] NODES_IPS;
     public static final String[] NODES_PORTS;
@@ -28,6 +29,7 @@ public class Conf {
         CLUSTER_NAME = String.valueOf(prop.getProperty("CLUSTER_NAME", "raft-cluster"));
         SERVER_NUMBER = Integer.valueOf(prop.getProperty("SERVER_NUMBER", "5"));
         HEARTBEAT_FREQUENCY = Integer.valueOf(prop.getProperty("HEARTBEAT_FREQUENCY", "50"));
+        MAX_CLIENT_SESSIONS = Integer.valueOf(prop.getProperty("MAX_CLIENT_SESSIONS", "10"));
         
         NODES_IPS = new String[SERVER_NUMBER];
         NODES_PORTS = new String[SERVER_NUMBER];

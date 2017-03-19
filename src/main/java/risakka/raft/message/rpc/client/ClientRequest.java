@@ -10,30 +10,25 @@ import risakka.raft.log.StateMachineCommand;
 @Getter
 public class ClientRequest implements MessageToServer {
 
-    private Integer requestId;
     private StateMachineCommand command;
 
     @Override
     public void onReceivedBy(RaftServer server) {  // t
-        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received ClientRequestMessage");
-        ServerResponse response;
+        System.out.println("Server " + server.getSelf().path().name() + " in state " + server.getState() + " has received ClientRequestMessage");
 
         switch (server.getState()) {
             case LEADER:
                 //append entry to local log and send appendEntriesRequest to followers
                 server.addEntryToLogAndSendToFollowers(command); //u - w
-
-                //TODO (v) send answer back to the client when committed
-
+                //when the entry will be committed, an answer will be sent back to the client         
                 break;
 
             case FOLLOWER:
             case CANDIDATE:
-                //TODO send hint who is the leader
-                response = new ServerResponse(Status.NOT_LEADER, null, server.getLeaderId());
+                ServerResponse response = new ServerResponse(Status.NOT_LEADER, null, server.getLeaderId());
+                server.getSender().tell(response, server.getSelf());
                 break;
         }
 
-        //getSender().tell(response, getSelf());
     }
 }

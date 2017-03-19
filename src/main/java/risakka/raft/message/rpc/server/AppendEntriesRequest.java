@@ -51,7 +51,9 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
                 currIndex++;
             }
             if (leaderCommit > server.getCommitIndex()) {
+                int oldCommitIndex = server.getCommitIndex();
                 server.setCommitIndex(Integer.min(leaderCommit, currIndex - 1));
+                server.executeCommands(oldCommitIndex + 1, server.getCommitIndex()); //execute commands known to be committed
             }
             server.setLeaderId(server.getServerId()); //the sender is the leader
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, currIndex - 1);

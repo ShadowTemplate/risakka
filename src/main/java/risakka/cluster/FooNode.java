@@ -26,9 +26,8 @@ public class FooNode extends UntypedPersistentActor {
     @Override
     public void onReceiveCommand(Object message) {
 
-        if (state == null) //Creating a empty state
-        {
-            LogEntry entry = new LogEntry(new StateMachineCommand("aa"), 2);
+        if (state == null) { //Creating a empty state
+            LogEntry entry = new LogEntry(new StateMachineCommand("aa", 1, 1), 2);
             state = new PersistentState(1, getSender(), null);
         }
         if (message instanceof String) {
