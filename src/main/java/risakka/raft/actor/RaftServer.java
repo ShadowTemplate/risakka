@@ -2,8 +2,7 @@ package risakka.raft.actor;
 
 import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
-import akka.persistence.SnapshotOffer;
-import akka.persistence.UntypedPersistentActor;
+import akka.persistence.*;
 import akka.routing.Router;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,6 +21,7 @@ import scala.concurrent.duration.Duration;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+
 import risakka.raft.message.rpc.client.RegisterClientResponse;
 import risakka.raft.message.rpc.client.ServerResponse;
 import risakka.raft.message.rpc.client.Status;
@@ -78,11 +78,16 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println(getSelf().path().toSerializationFormat() + " has received command " + message.getClass().getSimpleName());
         if (message instanceof MessageToServer) {
             ((MessageToServer) message).onReceivedBy(this);
+        } else if (message instanceof SaveSnapshotSuccess) {
+            //Do nothing
+        } else if (message instanceof SaveSnapshotFailure) {
+            System.out.println("Error while performing the snapshot. " + message);
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
         }
     }
+
 
     @Override
     public void onReceiveRecover(Object message) throws Throwable {
@@ -90,6 +95,9 @@ public class RaftServer extends UntypedPersistentActor {
         if (message instanceof SnapshotOffer) { // called when server recovers from durable storage
             persistentState = (PersistentState) ((SnapshotOffer) message).snapshot();
             System.out.println(getSelf().path().toSerializationFormat() + " has loaded old " + persistentState.getClass().getSimpleName());
+        } else if (message instanceof RecoveryCompleted) {
+            System.out.println("Recovery completed");
+            //actor can do something else before processing any other message
         } else {
             System.out.println(getSelf().path().toSerializationFormat() + " is unable to process "
                     + message.getClass().getSimpleName() + ". Forwarding to onReceiveCommand()...");
