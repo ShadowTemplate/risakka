@@ -12,29 +12,31 @@ import risakka.util.Conf;
 
 @Getter
 @Setter
-class FooNode extends UntypedPersistentActor {
+public class FooNode extends UntypedPersistentActor {
+
 
     private PersistentState state;
     private int myId;
 
     public FooNode(int myId) {
-        this.state = new PersistentState();
         this.myId = myId;
-        System.out.println("[Node " + myId + "] Called constructor: " + getSelf().path().toSerializationFormat());
+        System.out.println("[Node " + myId + "]Called constructor: " + getSelf().path().toSerializationFormat());
     }
 
     @Override
     public void onReceiveCommand(Object message) {
 
-        if (state == null) { //Creating a empty state
+        if (state == null) //Creating a empty state
+        {
             LogEntry entry = new LogEntry(new StateMachineCommand("aa"), 2);
             state = new PersistentState(1, getSender(), null);
         }
-
         if (message instanceof String) {
             saveSnapshot(state.copy());
-            System.out.println("Received message: " + message + " from " + getSender());
+            System.out.println("Received message: " + (String) message + " from " + getSender());
         }
+
+
     }
 
     public String persistenceId() {
@@ -43,16 +45,19 @@ class FooNode extends UntypedPersistentActor {
 
     @Override
     public void preStart() throws Exception {
-        super.preStart();
+
         System.out.println("Called preStart: " + getSelf().path().toSerializationFormat());
 
         for (int i = 0; i < Conf.NODES_PORTS.length; i++) {
+
             if (myId != i) {
                 String address = "akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[i] + ":" +
                         Conf.NODES_PORTS[i] + "/user/node";
                 System.out.println("Sending message to: " + address);
                 getContext().actorSelection(address).tell("Hi I'm " + myId, getSelf());
             }
+
+
         }
 
         Recovery.create();
@@ -68,10 +73,13 @@ class FooNode extends UntypedPersistentActor {
     public void onReceiveRecover(Object message) {
         System.out.println(getSelf().toString() + "- Recovered!");
 
-        if (message instanceof String) { //Called when a message has not been replied yet;
-                                      //In this example, actors send String messages
+        if (message instanceof String) //Called when a message has not been replied yet;
+        {                              //In this example, actors send String messages
+
             String m = ((String) message);
+
             System.out.println("This was a message not yet replied --> " + m);
+
         } else if (message instanceof SnapshotOffer) { //Called when an Actor recovers from durable storage
             PersistentState s = (PersistentState) ((SnapshotOffer) message).snapshot();
             System.out.println("Recovering from durable state = " + s);
@@ -80,5 +88,7 @@ class FooNode extends UntypedPersistentActor {
             System.out.println(message + message.getClass().toString());
 
         }
+
+
     }
 }
