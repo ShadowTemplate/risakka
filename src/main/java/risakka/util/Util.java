@@ -6,6 +6,9 @@ import akka.routing.BroadcastRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
 
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 
 import static java.util.stream.Collectors.toMap;
@@ -26,6 +29,22 @@ public class Util {
             routerMap.put(actor.path(), new Router(new BroadcastRoutingLogic(), others.values()));
         }
         return routerMap;
+    }
+
+    public static void deleteFolderRecursively(String folderPath) throws IOException {
+        Files.walkFileTree(Paths.get(folderPath), new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.delete(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     /*
