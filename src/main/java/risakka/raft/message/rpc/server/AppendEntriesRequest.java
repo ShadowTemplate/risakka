@@ -11,12 +11,12 @@ import java.util.List;
 @AllArgsConstructor
 public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 
-    private Integer term;
+    private final Integer term;
     // leaderId can be retrieved via Akka's getSender() method
-    private Integer prevLogIndex;
-    private Integer prevLogTerm;
-    private List<LogEntry> entries;
-    private Integer leaderCommit;
+    private final Integer prevLogIndex;
+    private final Integer prevLogTerm;
+    private final List<LogEntry> entries;
+    private final Integer leaderCommit;
 
     @Override
     public void onReceivedBy(RaftServer server) {

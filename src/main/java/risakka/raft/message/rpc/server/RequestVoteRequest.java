@@ -7,10 +7,10 @@ import risakka.raft.message.MessageToServer;
 @AllArgsConstructor
 public class RequestVoteRequest extends ServerRPC implements MessageToServer {
 
-    private Integer term;
+    private final Integer term;
     // candidateId can be retrieved via Akka's getSender() method
-    private Integer lastLogIndex;
-    private Integer lastLogTerm;
+    private final Integer lastLogIndex;
+    private final Integer lastLogTerm;
 
     @Override
     public void onReceivedBy(RaftServer server) {
