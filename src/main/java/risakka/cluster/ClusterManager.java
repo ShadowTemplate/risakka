@@ -7,12 +7,14 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import risakka.raft.message.akka.ClusterConfigurationMessage;
 import risakka.util.Conf;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import risakka.raft.actor.RaftServer;
 import risakka.util.Util;
@@ -32,11 +34,13 @@ public class ClusterManager {
 
         Map<Integer, ActorRef> actors = new HashMap<>();
         ArrayList<ActorSystem> actorSystems = new ArrayList<>();
+        List<ActorRef> actorsRefs = new ArrayList<>();
 
         File a = new File("logs/");
         if (a.exists()) {
             Util.deleteFolderRecursively("logs/");
         }
+
 
 
         for (int i = 0; i < Conf.SERVER_NUMBER; i++) {
@@ -62,8 +66,15 @@ public class ClusterManager {
             ActorSystem system = ActorSystem.create(Conf.CLUSTER_NAME, config);
 
             actorSystems.add(system);
-            actors.put(i, system.actorOf(Props.create(RaftServer.class), "node_" + i));
+            ActorRef actorRef = system.actorOf(Props.create(RaftServer.class), "node_" + i);
+            actors.put(i, actorRef);
+            actorsRefs.add(actorRef);
         }
+
+        for (ActorRef actor : actorsRefs) {
+            actor.tell(new ClusterConfigurationMessage(actorsRefs), actor);
+        }
+
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors);
         new ClusterManagerGUI(clusterManager).run();
     }

@@ -36,7 +36,7 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
 
     private boolean isLogUpToDate(RaftServer server, Integer candidateLastLogIndex, Integer candidateLastLogTerm) { // t
         int logSize = server.getPersistentState().getLog().size();
-        int lastTerm = server.getLastCommittedLogTerm(logSize);
+        int lastTerm = server.getLastLogTerm(logSize);
         return candidateLastLogTerm > lastTerm || (candidateLastLogTerm.equals(lastTerm) && candidateLastLogIndex >= logSize);
     }
 }

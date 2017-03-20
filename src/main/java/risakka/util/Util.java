@@ -20,15 +20,10 @@ public class Util {
         // TODO check the math. Election timeouts should be chosen randomly from a fixed interval (150-300 ms)
     }
 
-    private static Map<ActorPath, Router> buildBroadcastRoutersMap(List<ActorRef> actors) {
-        Map<ActorPath, Router> routerMap = new HashMap<>(actors.size());
+    public static Router buildBroadcastRouter(ActorRef actor, List<ActorRef> actors) {
         Map<ActorPath, Routee> routeeList = actors.parallelStream().collect(toMap(ActorRef::path, ActorRefRoutee::new));
-        for (ActorRef actor : actors) {
-            Map<ActorPath, Routee> others = new HashMap<>(routeeList);
-            others.remove(actor.path());
-            routerMap.put(actor.path(), new Router(new BroadcastRoutingLogic(), others.values()));
-        }
-        return routerMap;
+        routeeList.remove(actor.path());
+        return new Router(new BroadcastRoutingLogic(), routeeList.values());
     }
 
     public static void deleteFolderRecursively(String folderPath) throws IOException {
@@ -46,6 +41,18 @@ public class Util {
             }
         });
     }
+
+    /*
+    public static List<ActorRef> buildActorsRefs(UntypedActorContext context, String[] nodesIPs, String[] nodesPorts) {
+        List<ActorRef> actorsRefs = new ArrayList<>();
+        for (int i = 0; i < nodesIPs.length; i++) {
+            actorsRefs.add(buildActorRef(context, nodesIPs[i], nodesPorts[i]));
+        }
+        return actorsRefs;
+    }
+    */
+
+
 
     /*
     // TODO remove

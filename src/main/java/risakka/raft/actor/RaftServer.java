@@ -1,5 +1,6 @@
 package risakka.raft.actor;
 
+import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
 import akka.persistence.RecoveryCompleted;
@@ -18,6 +19,7 @@ import lombok.Setter;
 import risakka.raft.log.LogEntry;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToServer;
+import risakka.raft.message.akka.ClusterConfigurationMessage;
 import risakka.raft.message.akka.ElectionTimeoutMessage;
 import risakka.raft.message.akka.SendHeartbeatMessage;
 import risakka.raft.message.rpc.client.RegisterClientResponse;
@@ -59,6 +61,7 @@ public class RaftServer extends UntypedPersistentActor {
     // Akka fields
 
     // volatile fields
+    private List<ActorRef> actorsRefs;
     private Router broadcastRouter;
     private Cancellable heartbeatSchedule;
     private Cancellable electionSchedule;
@@ -75,6 +78,8 @@ public class RaftServer extends UntypedPersistentActor {
         commitIndex = 0;
         lastApplied = 0;
         leaderId = null;
+        actorsRefs = null;
+        broadcastRouter = null;
     }
 
     @Override
@@ -88,6 +93,15 @@ public class RaftServer extends UntypedPersistentActor {
     @Override
     public void onReceiveCommand(Object message) throws Throwable {
         System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
+
+        if (actorsRefs == null && broadcastRouter == null // server not initialized
+                && message instanceof MessageToServer // not an Akka internal message (e.g. snapshot-related) I would still be able to process
+                && !(message instanceof ClusterConfigurationMessage)) { // not the message I was waiting to init myself
+            System.out.println(getSelf().path().name() + " can't process message because it is still uninitialized");
+            unhandled(message);
+            return;
+        }
+
         if (message instanceof MessageToServer) {
             ((MessageToServer) message).onReceivedBy(this);
         } else if (message instanceof SaveSnapshotSuccess) {
@@ -180,7 +194,7 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
         
         int lastLogIndex = persistentState.getLog().size();
-        int lastLogTerm = getLastCommittedLogTerm(lastLogIndex);
+        int lastLogTerm = getLastLogTerm(lastLogIndex);
         for (int i = 0; i < Conf.SERVER_NUMBER; i++) { //TODO should be broadcast
             if(i != getServerId()) { //not myself
                 buildAddressFromId(i).tell(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
@@ -198,7 +212,7 @@ public class RaftServer extends UntypedPersistentActor {
         }
     }
 
-    public int getLastCommittedLogTerm(int lastLogIndex) {
+    public int getLastLogTerm(int lastLogIndex) {
         return lastLogIndex <= 0 ? 0 : persistentState.getLog().get(lastLogIndex).getTermNumber();
     }
     
@@ -239,7 +253,7 @@ public class RaftServer extends UntypedPersistentActor {
             //get new entries
             List<LogEntry> entries = new ArrayList<>();
             for (int j = nextIndex[followerId]; j <= lastIndex; j++) {
-                entries.add(server.getPersistentState().getLog().get(j));
+                entries.add(server.getPersistentState().getLog().get(j)); // TODO fix bug here
             }
             
             if (nextIndex[followerId] > 1) { //at least one entry is already committed
