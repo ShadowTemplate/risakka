@@ -195,12 +195,7 @@ public class RaftServer extends UntypedPersistentActor {
         
         int lastLogIndex = persistentState.getLog().size();
         int lastLogTerm = getLastLogTerm(lastLogIndex);
-        for (int i = 0; i < Conf.SERVER_NUMBER; i++) { //TODO should be broadcast
-            if(i != getServerId()) { //not myself
-                buildAddressFromId(i).tell(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
-            }
-        }
-//        broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), 0, 0), getSelf()); // h // TODO properly set last 2 params
+        broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
     }
 
     // TODO move the following methods in an appropriate location
