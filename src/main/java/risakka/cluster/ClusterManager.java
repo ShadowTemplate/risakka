@@ -10,10 +10,12 @@ import lombok.Getter;
 import risakka.util.Conf;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import risakka.raft.actor.RaftServer;
+import risakka.util.Util;
 
 @AllArgsConstructor
 @Getter
@@ -23,20 +25,7 @@ public class ClusterManager {
     private final Map<Integer, ActorRef> actors;
 
 
-    private static void deleteFolderRecursively(File path) {
-        File[] files = path.listFiles();
-        System.out.println("Cleaning folder:" + path.toString());
-        for (File file : files) {
-            if (file.isDirectory()) {
-                deleteFolderRecursively(file);
-            }
-            file.delete();
-        }
-        path.delete();
-    }
-
-
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         // Initializing every Actor with a different actor system, so that avery one has a different
         // IP:port combination and folder where to save its snapshots
@@ -46,7 +35,7 @@ public class ClusterManager {
 
         File a = new File("logs/");
         if (a.exists()) {
-            deleteFolderRecursively(a);
+            Util.deleteFolderRecursively("logs/");
         }
 
 
