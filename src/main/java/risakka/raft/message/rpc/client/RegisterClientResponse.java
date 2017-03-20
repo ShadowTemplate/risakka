@@ -9,9 +9,9 @@ import risakka.raft.message.MessageToClient;
 @Getter
 public class RegisterClientResponse implements MessageToClient {
     
-    private Status status;
-    private Integer clientId;
-    private Integer leaderHint;
+    private final Status status;
+    private final Integer clientId;
+    private final Integer leaderHint;
 
     @Override
     public void onReceivedBy(RaftClient client) {

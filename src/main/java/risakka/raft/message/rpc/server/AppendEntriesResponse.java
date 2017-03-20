@@ -7,11 +7,11 @@ import risakka.raft.message.MessageToServer;
 @AllArgsConstructor
 public class AppendEntriesResponse extends ServerRPC implements MessageToServer {
 
-    private Integer term;
-    private Boolean success;
+    private final Integer term;
+    private final Boolean success;
     
     //field needed to update nextIndex and matchIndex 
-    private Integer lastEntryIndex;
+    private final Integer lastEntryIndex;
 
     @Override
     public void onReceivedBy(RaftServer server) {

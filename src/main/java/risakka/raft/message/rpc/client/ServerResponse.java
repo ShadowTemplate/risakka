@@ -7,9 +7,9 @@ import risakka.raft.message.MessageToClient;
 @AllArgsConstructor
 public class ServerResponse implements MessageToClient {
 
-    private Status status;
-    private String response;
-    private Integer leaderHint;
+    private final Status status;
+    private final String response;
+    private final Integer leaderHint;
 
     @Override
     public void onReceivedBy(RaftClient client) {

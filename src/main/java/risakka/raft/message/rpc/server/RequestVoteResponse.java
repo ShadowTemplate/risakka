@@ -8,8 +8,8 @@ import risakka.util.Conf;
 @AllArgsConstructor
 public class RequestVoteResponse extends ServerRPC implements MessageToServer {
 
-    private Integer term;
-    private Boolean voteGranted;
+    private final Integer term;
+    private final Boolean voteGranted;
 
     @Override
     public void onReceivedBy(RaftServer server) {

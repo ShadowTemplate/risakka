@@ -10,7 +10,7 @@ import risakka.raft.log.StateMachineCommand;
 @Getter
 public class ClientRequest implements MessageToServer {
 
-    private StateMachineCommand command;
+    private final StateMachineCommand command;
 
     @Override
     public void onReceivedBy(RaftServer server) {  // t
