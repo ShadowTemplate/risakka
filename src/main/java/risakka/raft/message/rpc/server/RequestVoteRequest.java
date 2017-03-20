@@ -14,25 +14,29 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
 
     @Override
     public void onReceivedBy(RaftServer server) {
-        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteRequest");
+        System.out.println("\n" + server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteRequest from " + server.getSender().path().name() + "\n");
 
         onProcedureCall(server, term); // A
 
         RequestVoteResponse response;
         if (term < server.getPersistentState().getCurrentTerm()) { // m
+            System.out.println(server.getSelf().path().name() + " has higher term than and denies vote to " + server.getSender().path().name() + "\n");
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
         } else if ((server.getPersistentState().getVotedFor() == null || server.getPersistentState().getVotedFor().equals(server.getSender())) &&
                 isLogUpToDate(server, lastLogIndex, lastLogTerm)) { // n
+            System.out.println(server.getSelf().path().name() + " grants vote to " + server.getSender().path().name() + "\n");
             server.getPersistentState().updateVotedFor(server, server.getSelf());
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), true);
         } else {
+            System.out.println(server.getSelf().path().name() + " has log not matching and denies vote to " + server.getSender().path().name() + "\n");
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
         }
         server.getSender().tell(response, server.getSelf());
     }
 
     private boolean isLogUpToDate(RaftServer server, Integer candidateLastLogIndex, Integer candidateLastLogTerm) { // t
-        return candidateLastLogTerm > server.getPersistentState().getCurrentTerm() ||
-                (candidateLastLogTerm.equals(server.getPersistentState().getCurrentTerm()) && candidateLastLogIndex > server.getPersistentState().getLog().size());
+        int logSize = server.getPersistentState().getLog().size();
+        int lastTerm = server.getLastCommittedLogTerm(logSize);
+        return candidateLastLogTerm > lastTerm || (candidateLastLogTerm.equals(lastTerm) && candidateLastLogIndex >= logSize);
     }
 }

@@ -14,7 +14,7 @@ public class ServerResponse implements MessageToClient {
     @Override
     public void onReceivedBy(RaftClient client) {
 //        client.setServer(leader);
-        System.out.println("Client " + client.getSelf().path().toSerializationFormat() +
+        System.out.println("Client " + client.getSelf().path().name() +
                 " has received response " + response +
                 " with status " + status);
         

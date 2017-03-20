@@ -15,7 +15,7 @@ public class RegisterClientResponse implements MessageToClient {
 
     @Override
     public void onReceivedBy(RaftClient client) {
-        System.out.println("Client " + client.getSelf().path().toSerializationFormat() +
+        System.out.println("Client " + client.getSelf().path().name() +
                 " has received register response with status " + status);    
         
         switch (status) {

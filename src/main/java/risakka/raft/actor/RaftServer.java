@@ -87,7 +87,7 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void onReceiveCommand(Object message) throws Throwable {
-        System.out.println(getSelf().path().toSerializationFormat() + " has received command " + message.getClass().getSimpleName());
+        System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
         if (message instanceof MessageToServer) {
             ((MessageToServer) message).onReceivedBy(this);
         } else if (message instanceof SaveSnapshotSuccess) {
@@ -103,15 +103,15 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void onReceiveRecover(Object message) throws Throwable {
-        System.out.println(getSelf().path().toSerializationFormat() + " has received recover " + message.getClass().getSimpleName());
+        System.out.println(getSelf().path().name() + " has received recover " + message.getClass().getSimpleName());
         if (message instanceof SnapshotOffer) { // called when server recovers from durable storage
             persistentState = (PersistentState) ((SnapshotOffer) message).snapshot();
-            System.out.println(getSelf().path().toSerializationFormat() + " has loaded old " + persistentState.getClass().getSimpleName());
+            System.out.println(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
         } else if (message instanceof RecoveryCompleted) {
             System.out.println("Recovery completed");
             //actor can do something else before processing any other message
         } else {
-            System.out.println(getSelf().path().toSerializationFormat() + " is unable to process "
+            System.out.println(getSelf().path().name() + " is unable to process "
                     + message.getClass().getSimpleName() + ". Forwarding to onReceiveCommand()...");
             onReceiveCommand(message);
         }
@@ -151,8 +151,9 @@ public class RaftServer extends UntypedPersistentActor {
     private void scheduleElection() {  // TODO remember to reschedule on appendEntry received (call again the method)
         // TODO check if, in addition, ElectionTimeoutMessage in Inbox should be removed
         cancelSchedule(electionSchedule);
-        // Schedule a new election for itself. Starts after ELECTION_TIMEOUT and repeats every ELECTION_TIMEOUT
+        // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
         int electionTimeout = Util.getElectionTimeout(); // p
+        System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
         electionSchedule = getContext().system().scheduler().scheduleOnce(
                 Duration.create(electionTimeout, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
                 getContext().system().dispatcher(), getSelf());
@@ -179,15 +180,10 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
         
         int lastLogIndex = persistentState.getLog().size();
-        int lastLogterm;
-        if (lastLogIndex > 0) {
-            lastLogterm = persistentState.getLog().get(lastLogIndex).getTermNumber();
-        } else { //no entry committed yet
-            lastLogterm = 0;
-        }
+        int lastLogTerm = getLastCommittedLogTerm(lastLogIndex);
         for (int i = 0; i < Conf.SERVER_NUMBER; i++) { //TODO should be broadcast
             if(i != getServerId()) { //not myself
-                buildAddressFromId(i).tell(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogterm), getSelf());
+                buildAddressFromId(i).tell(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
             }
         }
 //        broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), 0, 0), getSelf()); // h // TODO properly set last 2 params
@@ -200,6 +196,10 @@ public class RaftServer extends UntypedPersistentActor {
             nextIndex[i] = persistentState.getLog().size() + 1;
             matchIndex[i] = 0;
         }
+    }
+
+    public int getLastCommittedLogTerm(int lastLogIndex) {
+        return lastLogIndex <= 0 ? 0 : persistentState.getLog().get(lastLogIndex).getTermNumber();
     }
     
     public void updateNextIndexAtIndex(int index, int value) {

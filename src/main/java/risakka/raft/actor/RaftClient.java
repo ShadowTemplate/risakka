@@ -58,7 +58,7 @@ public class RaftClient extends UntypedActor {
         
         //just to automatically send new client requests
         if (message instanceof ClientRequest) {
-            System.out.println(getSelf().path().toSerializationFormat() + " sends client request with id " + ((ClientRequest)message).getCommand().getSeqNumber());
+            System.out.println(getSelf().path().name() + " sends client request with id " + ((ClientRequest)message).getCommand().getSeqNumber());
             serverAddress.tell(message, client);
             
         } else {
@@ -70,7 +70,7 @@ public class RaftClient extends UntypedActor {
     //process responses of the server
     public void processResponse(Object message) {
         if (message instanceof MessageToClient) {
-            System.out.println(getSelf().path().toSerializationFormat() + " has received " + message.getClass().getSimpleName());
+            System.out.println(getSelf().path().name() + " has received " + message.getClass().getSimpleName());
             ((MessageToClient) message).onReceivedBy(this);
         } else {
             System.out.println("Unknown message type: " + message.getClass());

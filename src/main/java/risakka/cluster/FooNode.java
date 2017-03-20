@@ -20,7 +20,7 @@ public class FooNode extends UntypedPersistentActor {
 
     public FooNode(int myId) {
         this.myId = myId;
-        System.out.println("[Node " + myId + "]Called constructor: " + getSelf().path().toSerializationFormat());
+        System.out.println("[Node " + myId + "]Called constructor: " + getSelf().path().name());
     }
 
     @Override
@@ -45,7 +45,7 @@ public class FooNode extends UntypedPersistentActor {
     @Override
     public void preStart() throws Exception {
 
-        System.out.println("Called preStart: " + getSelf().path().toSerializationFormat());
+        System.out.println("Called preStart: " + getSelf().path().name());
 
         for (int i = 0; i < Conf.NODES_PORTS.length; i++) {
 
@@ -65,7 +65,7 @@ public class FooNode extends UntypedPersistentActor {
     @Override
     public void postStop() {
         super.postStop();
-        System.out.println("Called postStop: " + getSelf().path().toSerializationFormat());
+        System.out.println("Called postStop: " + getSelf().path().name());
     }
 
     @Override
