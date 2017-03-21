@@ -29,7 +29,8 @@ public class RegisterClientResponse implements MessageToClient {
                 }
                 break;
             case OK:
-                System.out.println("ok");
+                System.out.println("ok - client id: " + clientId);
+                client.setClientId(clientId);
                 break;
             default:
                 System.out.println("RegisterClientResponse: Status not recognized");

@@ -9,6 +9,9 @@ import akka.pattern.Patterns;
 import akka.util.Timeout;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import lombok.Getter;
 import lombok.Setter;
 import risakka.raft.message.rpc.client.ClientRequest;
@@ -19,6 +22,7 @@ import scala.concurrent.duration.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import lombok.AllArgsConstructor;
 import risakka.raft.message.rpc.client.RegisterClientRequest;
 import risakka.util.Conf;
 import scala.concurrent.Await;
@@ -30,6 +34,7 @@ import scala.concurrent.Future;
 public class RaftClient extends UntypedActor {
 
     private ActorRef client;
+    private int clientId;
     private Integer seqNumber;
     private ActorSelection serverAddress;
     
@@ -41,7 +46,6 @@ public class RaftClient extends UntypedActor {
         System.out.println("Creating RaftClient");
         this.client = getSelf();
         this.seqNumber = 0;
-        scheduleRequest();
         this.MAX_ATTEMPTS = Conf.SERVER_NUMBER; //TODO set an appropriate number
         this.answeringTimeout = new Timeout(Duration.create(1000, TimeUnit.MILLISECONDS));  //TODO set an appropriate timeout
     }
@@ -49,6 +53,9 @@ public class RaftClient extends UntypedActor {
     @Override
     public void preStart() throws Exception {
         super.preStart();        
+        ConsoleReader reader = new ConsoleReader(this);
+        Thread t = new Thread(reader);
+        t.start();
         registerContactingRandomServer();
     }
     
@@ -56,11 +63,16 @@ public class RaftClient extends UntypedActor {
     public void onReceive(Object message) throws Throwable {
         //client should not be contacted by server first
         
-        //just to automatically send new client requests
         if (message instanceof ClientRequest) {
             System.out.println(getSelf().path().name() + " sends client request with id " + ((ClientRequest)message).getCommand().getSeqNumber());
-            serverAddress.tell(message, client);
-            
+
+            Future<Object> future = Patterns.ask(serverAddress, message, answeringTimeout);
+            try {
+                processResponse(Await.result(future, answeringTimeout.duration()));
+
+            } catch (Exception ex) {
+                Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
@@ -76,14 +88,6 @@ public class RaftClient extends UntypedActor {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
         }
-    }
-
-    private void scheduleRequest() {
-        getContext().system().scheduler().schedule(Duration.Zero(),
-                Duration.create(400, TimeUnit.MILLISECONDS), client,
-                new ClientRequest(new StateMachineCommand("command" + seqNumber, 0, seqNumber)), 
-                getContext().system().dispatcher(), getSelf());
-        seqNumber++; // TODO DOESN'T INCREMENT EVERY TIME -> the problem is that it's scheduled once and it's not performed each time
     }
     
     // TODO move the following methods in an appropriate location
@@ -135,6 +139,30 @@ public class RaftClient extends UntypedActor {
         }
     }
     
+    @AllArgsConstructor
+    class ConsoleReader implements Runnable {
+
+        private RaftClient client;
+        
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    BufferedReader bufferRead = new BufferedReader(new InputStreamReader(System.in));
+                    String command = bufferRead.readLine();
+
+                    System.out.println("New command: " + command + " - SeqNumber");
+                    client.onReceive(new ClientRequest(new StateMachineCommand(command, client.clientId, client.seqNumber++)));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (Throwable ex) {
+                    Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+    }
+
+    
     public static void main(String[] args) {
         
         String c = new String("akka.actor.provider=remote \n"
@@ -144,9 +172,9 @@ public class RaftClient extends UntypedActor {
 
         Config config = ConfigFactory.parseString(c);
 
-        ActorSystem system = ActorSystem.create(Conf.CLUSTER_NAME, config);
+        ActorSystem system = ActorSystem.create("client-cluster", config);
         system.actorOf(Props.create(RaftClient.class), "client");
         
-                
+   
     }
 }

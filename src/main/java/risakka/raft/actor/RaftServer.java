@@ -22,6 +22,7 @@ import risakka.raft.message.MessageToServer;
 import risakka.raft.message.akka.ClusterConfigurationMessage;
 import risakka.raft.message.akka.ElectionTimeoutMessage;
 import risakka.raft.message.akka.SendHeartbeatMessage;
+import risakka.raft.message.rpc.client.RegisterClientRequest;
 import risakka.raft.message.rpc.client.RegisterClientResponse;
 import risakka.raft.message.rpc.client.ServerResponse;
 import risakka.raft.message.rpc.client.Status;
@@ -56,7 +57,7 @@ public class RaftServer extends UntypedPersistentActor {
     private ServerState state; // FOLLOWER / CANDIDATE / LEADER
     private Set<String> votersIds;
     private Integer leaderId; //last leader known
-    private LRUSessionMap<Integer, ActorSelection> clientSessionMap;
+    private LRUSessionMap<Integer, ActorRef> clientSessionMap;
 
     // Akka fields
 
@@ -92,7 +93,7 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void onReceiveCommand(Object message) throws Throwable {
-        System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
+//        System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
 
         if (actorsRefs == null && broadcastRouter == null // server not initialized
                 && message instanceof MessageToServer // not an Akka internal message (e.g. snapshot-related) I would still be able to process
@@ -167,7 +168,7 @@ public class RaftServer extends UntypedPersistentActor {
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
         int electionTimeout = Util.getElectionTimeout(); // p
-        System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
+//        System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
         electionSchedule = getContext().system().scheduler().scheduleOnce(
                 Duration.create(electionTimeout, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
                 getContext().system().dispatcher(), getSelf());
@@ -277,27 +278,44 @@ public class RaftServer extends UntypedPersistentActor {
 
             if (count > Conf.SERVER_NUMBER / 2) {
                 commitIndex = i;
-                executeCommands(oldCommitIndex + 1, commitIndex);
+                executeCommands(oldCommitIndex + 1, commitIndex, true);
                 break;
             }
         }
     }
 
-    public void executeCommands(int minIndex, int maxIndex) {
+    public void executeCommands(int minIndex, int maxIndex, Boolean leader) {
         for (int j = minIndex; j <= maxIndex; j++) { //v send answer back to the client when committed
+            
             StateMachineCommand command = persistentState.getLog().get(j).getCommand();
-            if (command.getCommand().startsWith("Register")) {
-                String address = command.getCommand().substring(command.getCommand().indexOf(" ") + 1); //format Register client_address
-                System.out.println("Registering client " + address);
-                clientSessionMap.put(j, getContext().actorSelection(address)); //allocate new session
-                clientSessionMap.get(j).tell(new RegisterClientResponse(Status.OK, j, null), getSelf());
-            } else if (clientSessionMap.containsKey(command.getClientId())) {
+            
+            //registration command of new client
+            if (command.getCommand().equals(RegisterClientRequest.REGISTER)) {
+                System.out.println("Registering client " + command.getClientAddress());
+                
+                //create new client session
+                clientSessionMap.put(j, command.getClientAddress()); //allocate new session
+                if (leader) { //answer back to the client
+                    clientSessionMap.get(j).tell(new RegisterClientResponse(Status.OK, j, null), getSelf());
+                }
+                return;
+            }
+            
+            //command of client with a valid session
+            if (clientSessionMap.containsKey(command.getClientId())) {
                 //TODO execute command on state machine iff command with that seqNumber not already performed 
                 String result = "result of command";
                 System.out.println("committing request: " + command.getCommand() + " of client " + clientSessionMap.get(command.getClientId()));
-                clientSessionMap.get(command.getClientId()).tell(new ServerResponse(Status.OK, result, null), getSelf());
-            } else {
+                clientSessionMap.put(command.getClientId(), command.getClientAddress());
+                if(leader) { //answer back to the client
+                    clientSessionMap.get(command.getClientId()).tell(new ServerResponse(Status.OK, result, null), getSelf());
+                }
+            } else { //client session is expired
+                System.out.println("Client session of " + command.getClientId() + " is expired");
                 //TODO session expired, command should not be executed
+                if(leader) {
+                    command.getClientAddress().tell(new ServerResponse(Status.SESSION_EXPIRED, null, null), getSelf());
+                }
             }
             //TODO update lastApplied
         }
@@ -305,6 +323,11 @@ public class RaftServer extends UntypedPersistentActor {
 
     public int getServerId() {
         String serverName = getSelf().path().name(); //e.g. node_0
+        return Character.getNumericValue(serverName.charAt(serverName.length() - 1));
+    }
+    
+    public int getSenderServerId() {
+        String serverName = getSender().path().name(); //e.g. node_0
         return Character.getNumericValue(serverName.charAt(serverName.length() - 1));
     }
 

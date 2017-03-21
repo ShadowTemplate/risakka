@@ -20,7 +20,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 
     @Override
     public void onReceivedBy(RaftServer server) {
-        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
+//        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
 
         onProcedureCall(server, term); // A
 
@@ -42,7 +42,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
                 return;
         }
         
-        server.setLeaderId(server.getServerId()); //the sender is the leader
+        server.setLeaderId(server.getSenderServerId()); //the sender is the leader
         
         //heartbeat still valid
         if (entries.isEmpty()) {
@@ -58,6 +58,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
         if it is not the first entry in the log
             AND
         (the log has no entry in prevLogIndex OR the terms at prevLogIndex are not equal */
+        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
         if (prevLogIndex != null && (server.getPersistentState().getLog().size() < prevLogIndex || //prevLogIndex == null when log is empty
                 !server.getPersistentState().getLog().get(prevLogIndex).getTermNumber().equals(prevLogTerm))) {
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
@@ -77,7 +78,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
             if (leaderCommit > server.getCommitIndex()) {
                 int oldCommitIndex = server.getCommitIndex();
                 server.setCommitIndex(Integer.min(leaderCommit, currIndex - 1));
-                server.executeCommands(oldCommitIndex + 1, server.getCommitIndex()); //execute commands known to be committed
+                server.executeCommands(oldCommitIndex + 1, server.getCommitIndex(), false); //execute commands known to be committed
             }
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, currIndex - 1); 
         }

@@ -19,6 +19,7 @@ public class ClientRequest implements MessageToServer {
         switch (server.getState()) {
             case LEADER:
                 //append entry to local log and send appendEntriesRequest to followers
+                command.setClientAddress(server.getSender());
                 server.addEntryToLogAndSendToFollowers(command); //u - w
                 //when the entry will be committed, an answer will be sent back to the client         
                 break;
