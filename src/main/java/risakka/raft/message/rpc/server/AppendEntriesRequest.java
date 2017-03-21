@@ -34,19 +34,38 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
         //case FOLLOWER: // s
         //case LEADER: // s // Leader may receive AppendEntries from other (old, isolated) Leaders
         //case [ex-CANDIDATE]
+
+        //AppendEntries (including heartbeat) with older term 
         if (term < server.getPersistentState().getCurrentTerm()) {
-            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
-        } else if (prevLogIndex != null && (server.getPersistentState().getLog().size() < prevLogIndex || //prevLogIndex == null when log is empty
+                response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
+                server.getSender().tell(response, server.getSelf());
+                return;
+        }
+        
+        server.setLeaderId(server.getServerId()); //the sender is the leader
+        
+        //heartbeat still valid
+        if (entries.isEmpty()) {
+            server.scheduleElection();
+            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, null);
+            server.getSender().tell(response, server.getSelf());
+            return;
+        }
+        
+        //AppendEntries (excluding heartbeat) still valid
+        
+        /* CASE FAIL
+        if it is not the first entry in the log
+            AND
+        (the log has no entry in prevLogIndex OR the terms at prevLogIndex are not equal */
+        if (prevLogIndex != null && (server.getPersistentState().getLog().size() < prevLogIndex || //prevLogIndex == null when log is empty
                 !server.getPersistentState().getLog().get(prevLogIndex).getTermNumber().equals(prevLogTerm))) {
-            server.setLeaderId(server.getServerId()); //the sender is the leader
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
-        } else {
-            int currIndex;
-            if(prevLogIndex == null) { //first entry to commit
-                currIndex = 1;
-            } else {
-                currIndex = prevLogIndex + 1;
-            }
+        
+        } else { /*CASE SUCCEED*/
+            
+            int currIndex = (prevLogIndex == null) ? 1 : prevLogIndex + 1; //null iff it is the first entry to commit
+            
             for (LogEntry entry : entries) {
                 if (server.getPersistentState().getLog().size() >= currIndex && // there is already an entry in that position
                         !server.getPersistentState().getLog().get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
@@ -60,8 +79,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
                 server.setCommitIndex(Integer.min(leaderCommit, currIndex - 1));
                 server.executeCommands(oldCommitIndex + 1, server.getCommitIndex()); //execute commands known to be committed
             }
-            server.setLeaderId(server.getServerId()); //the sender is the leader
-            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, currIndex - 1);
+            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, currIndex - 1); 
         }
         server.getSender().tell(response, server.getSelf());
     }

@@ -86,7 +86,7 @@ public class RaftServer extends UntypedPersistentActor {
     public void preStart() throws Exception {
         super.preStart();
         toFollowerState();
-    }
+        }
 
     // TODO Promemoria: rischedulare immediatamente HeartbeatTimeout appena si ricevono notizie dal server.
 
@@ -162,7 +162,7 @@ public class RaftServer extends UntypedPersistentActor {
                 getContext().system().dispatcher(), getSelf());
     }
 
-    private void scheduleElection() {  // TODO remember to reschedule on appendEntry received (call again the method)
+    public void scheduleElection() { 
         // TODO check if, in addition, ElectionTimeoutMessage in Inbox should be removed
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
@@ -287,12 +287,14 @@ public class RaftServer extends UntypedPersistentActor {
         for (int j = minIndex; j <= maxIndex; j++) { //v send answer back to the client when committed
             StateMachineCommand command = persistentState.getLog().get(j).getCommand();
             if (command.getCommand().startsWith("Register")) {
-                String address = command.getCommand().substring(9); //format Register client_address
+                String address = command.getCommand().substring(command.getCommand().indexOf(" ") + 1); //format Register client_address
+                System.out.println("Registering client " + address);
                 clientSessionMap.put(j, getContext().actorSelection(address)); //allocate new session
                 clientSessionMap.get(j).tell(new RegisterClientResponse(Status.OK, j, null), getSelf());
             } else if (clientSessionMap.containsKey(command.getClientId())) {
                 //TODO execute command on state machine iff command with that seqNumber not already performed 
                 String result = "result of command";
+                System.out.println("committing request: " + command.getCommand() + " of client " + clientSessionMap.get(command.getClientId()));
                 clientSessionMap.get(command.getClientId()).tell(new ServerResponse(Status.OK, result, null), getSelf());
             } else {
                 //TODO session expired, command should not be executed
