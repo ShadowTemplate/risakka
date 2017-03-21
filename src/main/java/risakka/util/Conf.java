@@ -13,11 +13,11 @@ public class Conf {
     
     public static final String[] NODES_IPS;
     public static final String[] NODES_PORTS;
-    
+    public static final String LOG_FOLDER;
     public static final String BASE_DIR;
 
     static {
-        String propertiesFile = "properties";//System.getProperty("risakka");
+        String propertiesFile = "src/main/resources/application.conf";//System.getProperty("risakka");
         System.out.println("Trying to load properties from file: " + propertiesFile);
         Properties prop = new Properties();
         try {
@@ -30,7 +30,7 @@ public class Conf {
         SERVER_NUMBER = Integer.valueOf(prop.getProperty("SERVER_NUMBER", "5"));
         HEARTBEAT_FREQUENCY = Integer.valueOf(prop.getProperty("HEARTBEAT_FREQUENCY", "50"));
         MAX_CLIENT_SESSIONS = Integer.valueOf(prop.getProperty("MAX_CLIENT_SESSIONS", "10"));
-        
+        LOG_FOLDER = String.valueOf(prop.getProperty("LOG_FOLDER", "logs"));
         NODES_IPS = new String[SERVER_NUMBER];
         NODES_PORTS = new String[SERVER_NUMBER];
         

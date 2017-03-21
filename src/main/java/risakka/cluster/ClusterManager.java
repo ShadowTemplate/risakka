@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import risakka.raft.actor.RaftServer;
 import risakka.util.Util;
 
@@ -36,34 +37,33 @@ public class ClusterManager {
         ArrayList<ActorSystem> actorSystems = new ArrayList<>();
         List<ActorRef> actorsRefs = new ArrayList<>();
 
-        File a = new File("logs/");
+        File a = new File(Conf.LOG_FOLDER + "/");
         if (a.exists()) {
-            Util.deleteFolderRecursively("logs/");
+            Util.deleteFolderRecursively(Conf.LOG_FOLDER + "/");
         }
 
-
+        Config initial = ConfigFactory.load("application");
 
         for (int i = 0; i < Conf.SERVER_NUMBER; i++) {
 
 
-            String c = new String("akka.persistence.journal.plugin=\"akka.persistence.journal.leveldb\" \n" +
-                    "akka.persistence.snapshot-store.plugin=\"akka.persistence.snapshot-store.local\"\n" +
-                    "akka.persistence.journal.leveldb.dir=\"logs/" + i + "/journal\" \n" +
-                    "akka.persistence.snapshot-store.local.dir=\"logs/" + i + "/snapshots\" \n" +
-                    "akka.actor.provider=remote \n" +
-                    "akka.remote.netty.tcp.hostname=\"" + Conf.NODES_IPS[i] + "\"\n" +
-                    "akka.remote.netty.tcp.port=" + Conf.NODES_PORTS[i] + "\n" +
-                    "akka.remote.enabled-transports=[\"akka.remote.netty.tcp\"] \n");
+            String c = new String(
+                    "akka.persistence.journal.leveldb.dir=\"" + Conf.LOG_FOLDER + "/" + i + "/journal\" \n" +
+                            "akka.persistence.snapshot-store.local.dir=\"" + Conf.LOG_FOLDER + "/" + i + "/snapshots\" \n" +
+                            "akka.remote.netty.tcp.hostname=\"" + Conf.NODES_IPS[i] + "\"\n" +
+                            "akka.remote.netty.tcp.port=" + Conf.NODES_PORTS[i] + "\n");
 
+            Config next = ConfigFactory.parseString(c);
 
-            File f = new File("logs/" + i + "/journal/");
-            File g = new File("logs/" + i + "/snapshots/");
+            Config total = next.withFallback(initial);
+
+            File f = new File(Conf.LOG_FOLDER + "/" + i + "/journal/");
+            File g = new File(Conf.LOG_FOLDER + "/" + i + "/snapshots/");
             f.mkdirs();
             g.mkdirs();
 
-            Config config = ConfigFactory.parseString(c);
+            ActorSystem system = ActorSystem.create(Conf.CLUSTER_NAME, total);
 
-            ActorSystem system = ActorSystem.create(Conf.CLUSTER_NAME, config);
 
             actorSystems.add(system);
             ActorRef actorRef = system.actorOf(Props.create(RaftServer.class), "node_" + i);
@@ -77,6 +77,8 @@ public class ClusterManager {
 
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors);
         new ClusterManagerGUI(clusterManager).run();
+
+
     }
 
 
