@@ -3,11 +3,7 @@ package risakka.raft.actor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
-import akka.persistence.RecoveryCompleted;
-import akka.persistence.SaveSnapshotFailure;
-import akka.persistence.SaveSnapshotSuccess;
-import akka.persistence.SnapshotOffer;
-import akka.persistence.UntypedPersistentActor;
+import akka.persistence.*;
 import akka.routing.Router;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -85,8 +81,9 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void preStart() throws Exception {
-        super.preStart();
+
         toFollowerState();
+        Recovery.create();
         }
 
     // TODO Promemoria: rischedulare immediatamente HeartbeatTimeout appena si ricevono notizie dal server.
@@ -124,6 +121,7 @@ public class RaftServer extends UntypedPersistentActor {
             System.out.println(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
         } else if (message instanceof RecoveryCompleted) {
             System.out.println("Recovery completed");
+            System.out.println(persistentState.toString());
             //actor can do something else before processing any other message
         } else {
             System.out.println(getSelf().path().name() + " is unable to process "

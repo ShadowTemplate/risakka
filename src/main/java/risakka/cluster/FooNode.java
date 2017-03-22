@@ -20,7 +20,7 @@ public class FooNode extends UntypedPersistentActor {
 
     public FooNode(int myId) {
         this.myId = myId;
-        System.out.println("[Node " + myId + "]Called constructor: " + getSelf().path().name());
+        System.out.println("[Foo NODE !! Node " + myId + "]Called constructor: " + getSelf().path().name());
     }
 
     @Override

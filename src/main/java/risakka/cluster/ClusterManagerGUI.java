@@ -2,6 +2,7 @@ package risakka.cluster;
 
 import akka.actor.Props;
 import lombok.AllArgsConstructor;
+import risakka.raft.actor.RaftServer;
 import risakka.util.Conf;
 
 import javax.swing.*;
@@ -45,7 +46,7 @@ class ClusterManagerGUI implements Runnable {
                     case "RESTART":
                         System.out.println("Restarting process " + nodeId);
                         clusterManager.getActorSystems().get(nodeId).stop(clusterManager.getActors().get(nodeId));
-                        clusterManager.getActors().put(nodeId, clusterManager.getActorSystems().get(nodeId).actorOf(Props.create(FooNode.class, nodeId), "server_" + nodeId));
+                        clusterManager.getActors().put(nodeId, clusterManager.getActorSystems().get(nodeId).actorOf(Props.create(RaftServer.class), "server_" + nodeId));
                         break;
                     default:
                         System.out.println("Operation not available");
@@ -54,7 +55,7 @@ class ClusterManagerGUI implements Runnable {
 
         }
 
-        GridLayout frameLayout = new GridLayout(1,2);
+        GridLayout frameLayout = new GridLayout(1, 2);
         frame.setLayout(frameLayout);
         frame.getContentPane().add(killPanel);
         frame.getContentPane().add(restartPanel);

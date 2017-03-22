@@ -22,6 +22,7 @@ import risakka.raft.log.StateMachineCommand;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -73,8 +74,10 @@ public class RaftClient extends UntypedActor {
             try {
                 processResponse(Await.result(future, answeringTimeout.duration()));
 
-            } catch (Exception ex) {
-                Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (TimeoutException ex) {
+                System.out.println("Server did't reply. Choosing another server");
+                registerContactingRandomServer(1);
+                //Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
             }
         } else {
             System.out.println("Unknown message type: " + message.getClass());

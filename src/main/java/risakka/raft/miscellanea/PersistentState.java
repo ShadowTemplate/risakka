@@ -43,4 +43,10 @@ public class PersistentState implements Serializable {
         log.deleteFrom(i);
         owner.saveSnapshot(this.copy());
     }
+
+    @Override
+    public String toString() {
+        return "Current State: current term " + this.currentTerm + "; Voted for: " + this.votedFor + ";\n" +
+                "Log entries: " + this.log;
+    }
 }
