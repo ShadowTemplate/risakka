@@ -7,6 +7,7 @@ import akka.routing.Router;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import risakka.raft.log.LogEntry;
 
 import java.io.Serializable;
@@ -16,6 +17,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor // TODO Maybe we can set (access = AccessLevel.PRIVATE)
+@ToString
 public class PersistentState implements Serializable {
 
     // TODO check how to init them (with 0 or by loading from the persistent state)
@@ -53,9 +55,5 @@ public class PersistentState implements Serializable {
         this.actorsRefs = actorsRefs;
         owner.saveSnapshot(this.copy());
     }
-    @Override
-    public String toString() {
-        return "Current State: current term " + this.currentTerm + "; Voted for: " + this.votedFor + ";\n" +
-                "Log entries: " + this.log;
-    }
+
 }
