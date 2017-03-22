@@ -155,6 +155,7 @@ public class RaftClient extends UntypedActor {
             while (true) {
                 try {
                     BufferedReader bufferRead = new BufferedReader(new InputStreamReader(System.in));
+                    System.out.println("Type your message to be sent to the server: ");
                     String command = bufferRead.readLine();
 
                     System.out.println("New command: " + command + " - SeqNumber");

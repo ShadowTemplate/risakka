@@ -17,6 +17,7 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
 
         onProcedureCall(server, term); // A
 
+
         if (term.equals(server.getPersistentState().getCurrentTerm()) && voteGranted) { // l
             System.out.println(server.getSelf().path().name() + " has received vote from " +
                     server.getSender().path().name());
@@ -26,6 +27,10 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
         if (server.getVotersIds().size() > Conf.SERVER_NUMBER / 2) {
             System.out.println(server.getSelf().path().name() + " can now become LEADER");
             server.toLeaderState(); // i
+        } else if (!voteGranted) {
+            System.out.println("\n" + server.getSelf().path().name() + " Received a voteGranted==FALSE. Switching to follower");
+            server.toFollowerState();
         }
+
     }
 }

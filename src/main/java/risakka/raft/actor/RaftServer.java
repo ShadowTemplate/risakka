@@ -5,11 +5,13 @@ import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
 import akka.persistence.*;
 import akka.routing.Router;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
 import lombok.Getter;
 import lombok.Setter;
 import risakka.raft.log.LogEntry;
@@ -75,7 +77,7 @@ public class RaftServer extends UntypedPersistentActor {
         commitIndex = 0;
         lastApplied = 0;
         leaderId = null;
-        actorsRefs = null;
+        //actorsRefs = null;
         broadcastRouter = null;
     }
 
@@ -84,7 +86,7 @@ public class RaftServer extends UntypedPersistentActor {
 
         toFollowerState();
         Recovery.create();
-        }
+    }
 
     // TODO Promemoria: rischedulare immediatamente HeartbeatTimeout appena si ricevono notizie dal server.
 
@@ -118,6 +120,8 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println(getSelf().path().name() + " has received recover " + message.getClass().getSimpleName());
         if (message instanceof SnapshotOffer) { // called when server recovers from durable storage
             persistentState = (PersistentState) ((SnapshotOffer) message).snapshot();
+            actorsRefs = persistentState.getActorsRefs();
+            broadcastRouter = Util.buildBroadcastRouter(getSelf(), actorsRefs);
             System.out.println(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
         } else if (message instanceof RecoveryCompleted) {
             System.out.println("Recovery completed");
@@ -132,6 +136,7 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void toFollowerState() {
         state = ServerState.FOLLOWER;
+        System.out.println(getSelf().path().name() + ": toFollowerState called");
         cancelSchedule(heartbeatSchedule); // Required when state changed from LEADER to FOLLOWER
         scheduleElection();
     }
@@ -161,8 +166,9 @@ public class RaftServer extends UntypedPersistentActor {
                 getContext().system().dispatcher(), getSelf());
     }
 
-    public void scheduleElection() { 
+    public void scheduleElection() {
         // TODO check if, in addition, ElectionTimeoutMessage in Inbox should be removed
+
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
         int electionTimeout = Util.getElectionTimeout(); // p
@@ -191,14 +197,14 @@ public class RaftServer extends UntypedPersistentActor {
         // TODO change randomly my electionTimeout
         scheduleElection(); // g
         System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
-        
+
         int lastLogIndex = persistentState.getLog().size();
         int lastLogTerm = getLastLogTerm(lastLogIndex);
         broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
     }
 
     // TODO move the following methods in an appropriate location
-    
+
     public void initializeNextAndMatchIndex() { //B
         for (int i = 0; i < nextIndex.length; i++) {
             nextIndex[i] = persistentState.getLog().size() + 1;
@@ -209,20 +215,20 @@ public class RaftServer extends UntypedPersistentActor {
     public int getLastLogTerm(int lastLogIndex) {
         return lastLogIndex <= 0 ? 0 : persistentState.getLog().get(lastLogIndex).getTermNumber();
     }
-    
+
     public void updateNextIndexAtIndex(int index, int value) {
         nextIndex[index] = value;
     }
-    
+
     public void updateMatchIndexAtIndex(int index, int value) {
         matchIndex[index] = value;
     }
-    
+
     private ActorSelection buildAddressFromId(int id) {
         return getContext().actorSelection("akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[id] + ":"
                 + Conf.NODES_PORTS[id] + "/user/node_" + id);
     }
-    
+
     public void addEntryToLogAndSendToFollowers(StateMachineCommand command) { //u
         LogEntry entry = new LogEntry(command, persistentState.getCurrentTerm());
         int lastIndex = persistentState.getLog().size();
@@ -233,7 +239,7 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void sendAppendEntriesToAllFollowers() { //w
         for (int i = 0; i < nextIndex.length; i++) {
-            if(i != getServerId()) { //if not myself
+            if (i != getServerId()) { //if not myself
                 sendAppendEntriesToOneFollower(this, i);
             }
         }
@@ -242,14 +248,14 @@ public class RaftServer extends UntypedPersistentActor {
     public void sendAppendEntriesToOneFollower(RaftServer server, Integer followerId) { //w
         int lastIndex = server.getPersistentState().getLog().size();
         if (lastIndex >= nextIndex[followerId]) {
-            
+
             ActorSelection actor = buildAddressFromId(followerId);
             //get new entries
             List<LogEntry> entries = new ArrayList<>();
             for (int j = nextIndex[followerId]; j <= lastIndex; j++) {
                 entries.add(server.getPersistentState().getLog().get(j)); // TODO fix bug here
             }
-            
+
             if (nextIndex[followerId] > 1) { //at least one entry is already committed
                 //previous entry w.r.t. the new ones that has to match in order to accept the new ones
                 LogEntry prevEntry = server.getPersistentState().getLog().get(nextIndex[followerId] - 1);
@@ -284,13 +290,13 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void executeCommands(int minIndex, int maxIndex, Boolean leader) {
         for (int j = minIndex; j <= maxIndex; j++) { //v send answer back to the client when committed
-            
+
             StateMachineCommand command = persistentState.getLog().get(j).getCommand();
-            
+
             //registration command of new client
             if (command.getCommand().equals(RegisterClientRequest.REGISTER)) {
                 System.out.println("Registering client " + command.getClientAddress());
-                
+
                 //create new client session
                 clientSessionMap.put(j, command.getClientAddress()); //allocate new session
                 if (leader) { //answer back to the client
@@ -298,20 +304,20 @@ public class RaftServer extends UntypedPersistentActor {
                 }
                 return;
             }
-            
+
             //command of client with a valid session
             if (clientSessionMap.containsKey(command.getClientId())) {
                 //TODO execute command on state machine iff command with that seqNumber not already performed 
                 String result = "result of command";
                 System.out.println("committing request: " + command.getCommand() + " of client " + clientSessionMap.get(command.getClientId()));
                 clientSessionMap.put(command.getClientId(), command.getClientAddress());
-                if(leader) { //answer back to the client
+                if (leader) { //answer back to the client
                     clientSessionMap.get(command.getClientId()).tell(new ServerResponse(Status.OK, result, null), getSelf());
                 }
             } else { //client session is expired
                 System.out.println("Client session of " + command.getClientId() + " is expired");
                 //TODO session expired, command should not be executed
-                if(leader) {
+                if (leader) {
                     command.getClientAddress().tell(new ServerResponse(Status.SESSION_EXPIRED, null, null), getSelf());
                 }
             }
@@ -323,7 +329,7 @@ public class RaftServer extends UntypedPersistentActor {
         String serverName = getSelf().path().name(); //e.g. node_0
         return Character.getNumericValue(serverName.charAt(serverName.length() - 1));
     }
-    
+
     public int getSenderServerId() {
         String serverName = getSender().path().name(); //e.g. node_0
         return Character.getNumericValue(serverName.charAt(serverName.length() - 1));
@@ -332,5 +338,9 @@ public class RaftServer extends UntypedPersistentActor {
     @Override
     public String persistenceId() {
         return "id_"; // TODO check
+    }
+
+    public void perstistClusterInfo(List<ActorRef> actorsRefs) {
+        persistentState.updateClusterInfo(this, this.actorsRefs);
     }
 }

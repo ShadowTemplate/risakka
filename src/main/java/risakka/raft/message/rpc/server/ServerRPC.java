@@ -10,5 +10,6 @@ public class ServerRPC {
             server.toFollowerState();
             server.setLeaderId(null);
         }
+
     }
 }

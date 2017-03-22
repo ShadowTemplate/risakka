@@ -28,7 +28,7 @@ public class FooNode extends UntypedPersistentActor {
 
         if (state == null) { //Creating a empty state
             LogEntry entry = new LogEntry(new StateMachineCommand("aa", 1, 1), 2);
-            state = new PersistentState(1, getSender(), null);
+            state = new PersistentState(1, getSender(), null, null);
         }
         if (message instanceof String) {
             saveSnapshot(state.copy());

@@ -2,12 +2,16 @@ package risakka.raft.miscellanea;
 
 import akka.actor.ActorRef;
 import akka.persistence.UntypedPersistentActor;
+import akka.routing.Routee;
+import akka.routing.Router;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import risakka.raft.log.LogEntry;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -18,9 +22,10 @@ public class PersistentState implements Serializable {
     private Integer currentTerm = 0; // a
     private ActorRef votedFor = null;
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
+    private List<ActorRef> actorsRefs = new ArrayList<ActorRef>();
 
     public PersistentState copy() {
-        return new PersistentState(this.currentTerm, this.votedFor, this.log);
+        return new PersistentState(this.currentTerm, this.votedFor, this.log, this.actorsRefs);
     }
 
     public void updateCurrentTerm(UntypedPersistentActor owner, Integer currentTerm) {
@@ -44,6 +49,10 @@ public class PersistentState implements Serializable {
         owner.saveSnapshot(this.copy());
     }
 
+    public void updateClusterInfo(UntypedPersistentActor owner, List<ActorRef> actorsRefs) {
+        this.actorsRefs = actorsRefs;
+        owner.saveSnapshot(this.copy());
+    }
     @Override
     public String toString() {
         return "Current State: current term " + this.currentTerm + "; Voted for: " + this.votedFor + ";\n" +

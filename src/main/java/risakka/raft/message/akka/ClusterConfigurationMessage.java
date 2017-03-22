@@ -1,6 +1,7 @@
 package risakka.raft.message.akka;
 
 import akka.actor.ActorRef;
+import akka.routing.Router;
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
@@ -18,5 +19,6 @@ public class ClusterConfigurationMessage implements MessageToServer {
         System.out.println(server.getSelf().path().name() + " has received cluster information: " + actors);
         server.setActorsRefs(actors);
         server.setBroadcastRouter(Util.buildBroadcastRouter(server.getSelf(), actors));
+        server.perstistClusterInfo(actors); //saving cluster nodes Ref to persistent storage
     }
 }
