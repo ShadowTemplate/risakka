@@ -203,6 +203,9 @@ public class RaftServer extends UntypedPersistentActor {
     public void beginElection() { // d
         votersIds.clear();
         persistentState.updateCurrentTerm(this, persistentState.getCurrentTerm() + 1); // b
+        if (eventNotifier != null) {
+            eventNotifier.updateTerm(id, persistentState.getCurrentTerm());
+        }
         leaderId = null;
         getPersistentState().updateVotedFor(this, getSelf());
         votersIds.add(getSelf().path().toSerializationFormat()); // f

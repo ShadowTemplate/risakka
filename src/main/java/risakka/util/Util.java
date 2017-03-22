@@ -16,7 +16,7 @@ import static java.util.stream.Collectors.toMap;
 public class Util {
 
     public static int getElectionTimeout() {
-        return Conf.HEARTBEAT_FREQUENCY * 10 + (new Random().nextInt(Conf.HEARTBEAT_FREQUENCY / 2));
+        return Conf.HEARTBEAT_FREQUENCY * 4 + (new Random().nextInt(Conf.HEARTBEAT_FREQUENCY * 2));
         // TODO check the math. Election timeouts should be chosen randomly from a fixed interval (150-300 ms)
     }
 
@@ -52,32 +52,4 @@ public class Util {
     }
     */
 
-
-
-    /*
-    // TODO remove
-    public static void main(String[] args) {
-        final ActorSystem system = ActorSystem.create("routers-creation-test");
-        final int serverNumber = 5;
-        List<ActorRef> serverList = new ArrayList<>(serverNumber);
-        for (int i = 0; i < serverNumber; i++) {
-            serverList.add(system.actorOf(Props.create(DemoServer.class), "server" + i));
-        }
-        Map<ActorPath, Router> actorPathRouterMap = buildBroadcastRoutersMap(serverList);
-        for (Map.Entry<ActorPath, Router> actorPathRouterEntry : actorPathRouterMap.entrySet()) {
-            System.out.println("" + actorPathRouterEntry.getKey().toSerializationFormat() +
-                    "\n" + actorPathRouterEntry.getValue().routees());
-        }
-        system.shutdown();
-    }
-
-    public static void main(String[] args) {
-        final ActorSystem system = ActorSystem.create("routers-creation-test");
-        final int serverNumber = 3;
-        List<ActorRef> serverList = new ArrayList<>(serverNumber);
-        for (int i = 0; i < serverNumber; i++) {
-            serverList.add(system.actorOf(Props.create(RaftServer.class), "server" + i));
-        }
-    }
-    */
 }

@@ -27,4 +27,8 @@ public class EventNotifier {
     public void updateState(Integer id, ServerState state) {
         risakkaGUI.getServerPanels().get(id).getStateLabel().setText("State: " + state);
     }
+
+    public void updateTerm(Integer id, Integer termNumber) {
+        risakkaGUI.getServerPanels().get(id).getTermLabel().setText("Term: " + termNumber);
+    }
 }

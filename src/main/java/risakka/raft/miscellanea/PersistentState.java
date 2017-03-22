@@ -2,18 +2,17 @@ package risakka.raft.miscellanea;
 
 import akka.actor.ActorRef;
 import akka.persistence.UntypedPersistentActor;
-import akka.routing.Routee;
-import akka.routing.Router;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import risakka.raft.log.LogEntry;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
+@ToString
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor // TODO Maybe we can set (access = AccessLevel.PRIVATE)
@@ -53,10 +52,5 @@ public class PersistentState implements Serializable {
     public void updateClusterInfo(UntypedPersistentActor owner, Collection<ActorRef> actorsRefs) {
         this.actorsRefs = actorsRefs;
         owner.saveSnapshot(this.copy());
-    }
-    @Override
-    public String toString() {
-        return "Current State: current term " + this.currentTerm + "; Voted for: " + this.votedFor + ";\n" +
-                "Log entries: " + this.log;
     }
 }

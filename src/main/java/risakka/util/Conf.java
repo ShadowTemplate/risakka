@@ -26,17 +26,17 @@ public class Conf {
             System.err.println("Error while loading properties: " + ex.getMessage());
         }
 
-        CLUSTER_NAME = String.valueOf(prop.getProperty("CLUSTER_NAME", "raft-cluster"));
+        CLUSTER_NAME = prop.getProperty("CLUSTER_NAME", "raft-cluster");
         SERVER_NUMBER = Integer.valueOf(prop.getProperty("SERVER_NUMBER", "5"));
-        HEARTBEAT_FREQUENCY = Integer.valueOf(prop.getProperty("HEARTBEAT_FREQUENCY", "50"));
+        HEARTBEAT_FREQUENCY = Integer.valueOf(prop.getProperty("HEARTBEAT_FREQUENCY", "2000"));
         MAX_CLIENT_SESSIONS = Integer.valueOf(prop.getProperty("MAX_CLIENT_SESSIONS", "10"));
-        LOG_FOLDER = String.valueOf(prop.getProperty("LOG_FOLDER", "logs"));
+        LOG_FOLDER = prop.getProperty("LOG_FOLDER", "logs");
         NODES_IPS = new String[SERVER_NUMBER];
         NODES_PORTS = new String[SERVER_NUMBER];
         
         for (int i = 0; i < SERVER_NUMBER; i++) {
-            NODES_IPS[i] = String.valueOf(prop.getProperty("IP_NODE_" + i)); // TODO ADD DEFAULT
-            NODES_PORTS[i] = String.valueOf(prop.getProperty("PORT_NODE_" + i)); // TODO ADD DEFAULT
+            NODES_IPS[i] = prop.getProperty("IP_NODE_" + i); // TODO ADD DEFAULT
+            NODES_PORTS[i] = prop.getProperty("PORT_NODE_" + i); // TODO ADD DEFAULT
         }
         
         BASE_DIR = System.getProperty("user.dir");

@@ -113,6 +113,8 @@ public class ClusterManagerGUI implements Runnable {
         infoContainer.setLayout(new FlowLayout());
         infoContainer.add(serverPanel.getStateLabel());
         infoContainer.add(Box.createHorizontalStrut(10));
+        infoContainer.add(serverPanel.getTermLabel());
+        infoContainer.add(Box.createHorizontalStrut(10));
         infoContainer.add(serverPanel.getActiveSwitch());
         infoContainer.add(Box.createHorizontalStrut(10));
         infoContainer.add(serverPanel.getElectionSwitch());

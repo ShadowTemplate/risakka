@@ -12,6 +12,7 @@ class ServerPanel {
     private final Integer id;
     private final String fullName;
     private final JLabel stateLabel = new JLabel("State: UNKNOWN");
+    private final JLabel termLabel = new JLabel("Term: -1");
     private final JToggleButton activeSwitch = new JToggleButton("ACTIVE");
     private final JToggleButton electionSwitch = new JToggleButton("Election timer: ON");
     private final JTextArea logArea = new JTextArea(17, 21);
