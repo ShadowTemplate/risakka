@@ -6,6 +6,7 @@ import akka.actor.Props;
 import lombok.Getter;
 import risakka.cluster.ClusterManager;
 import risakka.raft.actor.RaftServer;
+import risakka.raft.message.akka.ClusterConfigurationMessage;
 
 import javax.swing.*;
 import java.awt.*;
@@ -78,6 +79,8 @@ public class ClusterManagerGUI implements Runnable {
                 activeSwitch.setText("ACTIVE");
                 ActorRef newActor = clusterManager.getActorSystems().get(nodeId).actorOf(Props.create(RaftServer.class, nodeId), "node_" + nodeId);
                 clusterManager.getActors().put(nodeId, newActor);
+
+                newActor.tell(new ClusterConfigurationMessage(clusterManager.getActors().values(), new EventNotifier(this)), newActor);
             }
         });
     }

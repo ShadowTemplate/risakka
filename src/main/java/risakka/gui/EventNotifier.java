@@ -20,7 +20,7 @@ public class EventNotifier {
     public void updateLog(Integer id, List<LogEntry> newEntries) {
         JTextArea logArea = risakkaGUI.getServerPanels().get(id).getLogArea();
         for (LogEntry newEntry : newEntries) {
-            logArea.append(newEntries + "\n");
+            logArea.append(newEntry + "\n");
         }
     }
 

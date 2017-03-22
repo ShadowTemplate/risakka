@@ -11,6 +11,7 @@ import risakka.raft.log.LogEntry;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Getter
@@ -22,7 +23,7 @@ public class PersistentState implements Serializable {
     private Integer currentTerm = 0; // a
     private ActorRef votedFor = null;
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
-    private List<ActorRef> actorsRefs = new ArrayList<ActorRef>();
+    private Collection<ActorRef> actorsRefs = new ArrayList<>();
 
     public PersistentState copy() {
         return new PersistentState(this.currentTerm, this.votedFor, this.log, this.actorsRefs);
@@ -49,7 +50,7 @@ public class PersistentState implements Serializable {
         owner.saveSnapshot(this.copy());
     }
 
-    public void updateClusterInfo(UntypedPersistentActor owner, List<ActorRef> actorsRefs) {
+    public void updateClusterInfo(UntypedPersistentActor owner, Collection<ActorRef> actorsRefs) {
         this.actorsRefs = actorsRefs;
         owner.saveSnapshot(this.copy());
     }

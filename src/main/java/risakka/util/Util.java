@@ -20,7 +20,7 @@ public class Util {
         // TODO check the math. Election timeouts should be chosen randomly from a fixed interval (150-300 ms)
     }
 
-    public static Router buildBroadcastRouter(ActorRef actor, List<ActorRef> actors) {
+    public static Router buildBroadcastRouter(ActorRef actor, Collection<ActorRef> actors) {
         Map<ActorPath, Routee> routeeList = actors.parallelStream().collect(toMap(ActorRef::path, ActorRefRoutee::new));
         routeeList.remove(actor.path());
         return new Router(new BroadcastRoutingLogic(), routeeList.values());

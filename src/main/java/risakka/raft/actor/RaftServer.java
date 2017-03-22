@@ -6,10 +6,7 @@ import akka.actor.Cancellable;
 import akka.persistence.*;
 import akka.routing.Router;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import lombok.Getter;
@@ -61,7 +58,7 @@ public class RaftServer extends UntypedPersistentActor {
     // Akka fields
 
     // volatile fields
-    private List<ActorRef> actorsRefs;
+    private Collection<ActorRef> actorsRefs;
     private Router broadcastRouter;
     private Cancellable heartbeatSchedule;
     private Cancellable electionSchedule;
@@ -350,7 +347,7 @@ public class RaftServer extends UntypedPersistentActor {
         return "id_"; // TODO check
     }
 
-    public void perstistClusterInfo(List<ActorRef> actorsRefs) {
+    public void persistClusterInfo(Collection<ActorRef> actorsRefs) {
         persistentState.updateClusterInfo(this, this.actorsRefs);
     }
 }
