@@ -25,7 +25,16 @@ public class EventNotifier {
     }
 
     public void updateState(Integer id, ServerState state) {
-        risakkaGUI.getServerPanels().get(id).getStateLabel().setText("State: " + state);
+        String color;
+        if (state == ServerState.LEADER) {
+            color = "#00ff2a";
+        } else if (state == ServerState.CANDIDATE) {
+            color = "#ff0015";
+        } else {
+            color = "#00d8ff";
+        }
+        String coloredLabel = "<html>State: <b><font color=" + color + ">" + state + "</font></b></html>";
+        risakkaGUI.getServerPanels().get(id).getStateLabel().setText(coloredLabel);
     }
 
     public void updateTerm(Integer id, Integer termNumber) {
