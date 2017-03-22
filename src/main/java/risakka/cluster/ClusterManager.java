@@ -7,6 +7,8 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import risakka.gui.ClusterManagerGUI;
+import risakka.gui.EventNotifier;
 import risakka.raft.message.akka.ClusterConfigurationMessage;
 import risakka.util.Conf;
 
@@ -45,13 +47,10 @@ public class ClusterManager {
         Config initial = ConfigFactory.load("application");
 
         for (int i = 0; i < Conf.SERVER_NUMBER; i++) {
-
-
-            String c = new String(
-                    "akka.persistence.journal.leveldb.dir=\"" + Conf.LOG_FOLDER + "/" + i + "/journal\" \n" +
-                            "akka.persistence.snapshot-store.local.dir=\"" + Conf.LOG_FOLDER + "/" + i + "/snapshots\" \n" +
-                            "akka.remote.netty.tcp.hostname=\"" + Conf.NODES_IPS[i] + "\"\n" +
-                            "akka.remote.netty.tcp.port=" + Conf.NODES_PORTS[i] + "\n");
+            String c = "akka.persistence.journal.leveldb.dir=\"" + Conf.LOG_FOLDER + "/" + i + "/journal\" \n" +
+                    "akka.persistence.snapshot-store.local.dir=\"" + Conf.LOG_FOLDER + "/" + i + "/snapshots\" \n" +
+                    "akka.remote.netty.tcp.hostname=\"" + Conf.NODES_IPS[i] + "\"\n" +
+                    "akka.remote.netty.tcp.port=" + Conf.NODES_PORTS[i] + "\n";
 
             Config next = ConfigFactory.parseString(c);
 
@@ -66,19 +65,20 @@ public class ClusterManager {
 
 
             actorSystems.add(system);
-            ActorRef actorRef = system.actorOf(Props.create(RaftServer.class), "node_" + i);
+            ActorRef actorRef = system.actorOf(Props.create(RaftServer.class, i), "node_" + i);
             actors.put(i, actorRef);
             actorsRefs.add(actorRef);
         }
 
-        for (ActorRef actor : actorsRefs) {
-            actor.tell(new ClusterConfigurationMessage(actorsRefs), actor);
-        }
-
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors);
-        new ClusterManagerGUI(clusterManager).run();
+        ClusterManagerGUI risakkaGUI = new ClusterManagerGUI(clusterManager);
+        EventNotifier eventNotifier = new EventNotifier(risakkaGUI);
+        risakkaGUI.run();
 
 
+        for (ActorRef actor : actorsRefs) {
+            actor.tell(new ClusterConfigurationMessage(actorsRefs, eventNotifier), actor);
+        }
     }
 
 

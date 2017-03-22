@@ -3,6 +3,7 @@ package risakka.raft.message.akka;
 import akka.actor.ActorRef;
 import akka.routing.Router;
 import lombok.AllArgsConstructor;
+import risakka.gui.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
 import risakka.util.Util;
@@ -13,6 +14,7 @@ import java.util.List;
 public class ClusterConfigurationMessage implements MessageToServer {
 
     private final List<ActorRef> actors;
+    private final EventNotifier eventNotifier;
 
     @Override
     public void onReceivedBy(RaftServer server) {
@@ -20,5 +22,6 @@ public class ClusterConfigurationMessage implements MessageToServer {
         server.setActorsRefs(actors);
         server.setBroadcastRouter(Util.buildBroadcastRouter(server.getSelf(), actors));
         server.perstistClusterInfo(actors); //saving cluster nodes Ref to persistent storage
+        server.setEventNotifier(eventNotifier);
     }
 }

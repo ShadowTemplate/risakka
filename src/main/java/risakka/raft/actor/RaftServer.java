@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 import lombok.Getter;
 import lombok.Setter;
+import risakka.gui.EventNotifier;
 import risakka.raft.log.LogEntry;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToServer;
@@ -65,20 +66,25 @@ public class RaftServer extends UntypedPersistentActor {
     private Cancellable heartbeatSchedule;
     private Cancellable electionSchedule;
 
+    private EventNotifier eventNotifier;
+    private Integer id;
 
-    public RaftServer() {
-        System.out.println("Creating RaftServer");
-        votersIds = new HashSet<>();
-        clientSessionMap = new LRUSessionMap<>(Conf.MAX_CLIENT_SESSIONS);
-        persistentState = new PersistentState();
-        nextIndex = new int[Conf.SERVER_NUMBER];
-        matchIndex = new int[Conf.SERVER_NUMBER];
+
+    public RaftServer(Integer id) {
+        System.out.println("Creating RaftServer with id " + id);
+        this.votersIds = new HashSet<>();
+        this.clientSessionMap = new LRUSessionMap<>(Conf.MAX_CLIENT_SESSIONS);
+        this.persistentState = new PersistentState();
+        this.nextIndex = new int[Conf.SERVER_NUMBER];
+        this.matchIndex = new int[Conf.SERVER_NUMBER];
         this.initializeNextAndMatchIndex();
-        commitIndex = 0;
-        lastApplied = 0;
-        leaderId = null;
-        //actorsRefs = null;
-        broadcastRouter = null;
+        this.commitIndex = 0;
+        this.lastApplied = 0;
+        this.leaderId = null;
+        this.actorsRefs = null;
+        this.broadcastRouter = null;
+        this.eventNotifier = null;
+        this.id = id;
     }
 
     @Override
@@ -92,9 +98,9 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void onReceiveCommand(Object message) throws Throwable {
-//        System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
+        System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
 
-        if (actorsRefs == null && broadcastRouter == null // server not initialized
+        if (actorsRefs == null && broadcastRouter == null && eventNotifier == null // server not initialized
                 && message instanceof MessageToServer // not an Akka internal message (e.g. snapshot-related) I would still be able to process
                 && !(message instanceof ClusterConfigurationMessage)) { // not the message I was waiting to init myself
             System.out.println(getSelf().path().name() + " can't process message because it is still uninitialized");
@@ -104,6 +110,7 @@ public class RaftServer extends UntypedPersistentActor {
 
         if (message instanceof MessageToServer) {
             ((MessageToServer) message).onReceivedBy(this);
+            eventNotifier.addMessage(id, "Received " + message.getClass().getSimpleName());
         } else if (message instanceof SaveSnapshotSuccess) {
             //Do nothing
         } else if (message instanceof SaveSnapshotFailure) {
@@ -136,6 +143,9 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void toFollowerState() {
         state = ServerState.FOLLOWER;
+        if (eventNotifier != null) {
+            eventNotifier.updateState(id, state);
+        }
         System.out.println(getSelf().path().name() + ": toFollowerState called");
         cancelSchedule(heartbeatSchedule); // Required when state changed from LEADER to FOLLOWER
         scheduleElection();
@@ -143,12 +153,18 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void toCandidateState() {
         state = ServerState.CANDIDATE; // c
+        if (eventNotifier != null) {
+            eventNotifier.updateState(id, state);
+        }
         onConversionToCandidate(); // e
     }
 
     public void toLeaderState() {
         state = ServerState.LEADER;
-        leaderId = getServerId();
+        if (eventNotifier != null) {
+            eventNotifier.updateState(id, state);
+        }
+        leaderId = id;
         cancelSchedule(electionSchedule);
         startHeartbeating();
 
@@ -168,11 +184,10 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void scheduleElection() {
         // TODO check if, in addition, ElectionTimeoutMessage in Inbox should be removed
-
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
         int electionTimeout = Util.getElectionTimeout(); // p
-//        System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
+        System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
         electionSchedule = getContext().system().scheduler().scheduleOnce(
                 Duration.create(electionTimeout, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
                 getContext().system().dispatcher(), getSelf());
@@ -197,7 +212,7 @@ public class RaftServer extends UntypedPersistentActor {
         // TODO change randomly my electionTimeout
         scheduleElection(); // g
         System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
-
+        
         int lastLogIndex = persistentState.getLog().size();
         int lastLogTerm = getLastLogTerm(lastLogIndex);
         broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
@@ -239,7 +254,7 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void sendAppendEntriesToAllFollowers() { //w
         for (int i = 0; i < nextIndex.length; i++) {
-            if (i != getServerId()) { //if not myself
+            if (i != id) { //if not myself
                 sendAppendEntriesToOneFollower(this, i);
             }
         }
@@ -323,11 +338,6 @@ public class RaftServer extends UntypedPersistentActor {
             }
             //TODO update lastApplied
         }
-    }
-
-    public int getServerId() {
-        String serverName = getSelf().path().name(); //e.g. node_0
-        return Character.getNumericValue(serverName.charAt(serverName.length() - 1));
     }
 
     public int getSenderServerId() {
