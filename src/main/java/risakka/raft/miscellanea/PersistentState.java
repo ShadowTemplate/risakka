@@ -22,7 +22,7 @@ public class PersistentState implements Serializable {
     private Integer currentTerm = 0; // a
     private ActorRef votedFor = null;
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
-    private Collection<ActorRef> actorsRefs = new ArrayList<>();
+    private List<ActorRef> actorsRefs = new ArrayList<ActorRef>();
 
     public PersistentState copy() {
         return new PersistentState(this.currentTerm, this.votedFor, this.log, this.actorsRefs);
