@@ -121,8 +121,7 @@ public class RaftServer extends UntypedPersistentActor {
     public void onReceiveRecover(Object message) throws Throwable {
         System.out.println(getSelf().path().name() + " has received recover " + message.getClass().getSimpleName());
         if (message instanceof SnapshotOffer) { // called when server recovers from durable storage
-            persistentState = (PersistentState) ((SnapshotOffer) message).snapshot();
-            broadcastRouter = Util.buildBroadcastRouter(getSelf(), persistentState.getActorsRefs());
+            persistentState = buildFromSnapshotOffer((SnapshotOffer) message);
             System.out.println(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
         } else if (message instanceof RecoveryCompleted) {
             System.out.println("Recovery completed");
@@ -209,7 +208,7 @@ public class RaftServer extends UntypedPersistentActor {
         // TODO change randomly my electionTimeout
         scheduleElection(); // g
         System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
-        
+
         int lastLogIndex = persistentState.getLog().size();
         int lastLogTerm = getLastLogTerm(lastLogIndex);
         broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
@@ -320,7 +319,7 @@ public class RaftServer extends UntypedPersistentActor {
 
             //command of client with a valid session
             if (clientSessionMap.containsKey(command.getClientId())) {
-                //TODO execute command on state machine iff command with that seqNumber not already performed 
+                //TODO execute command on state machine iff command with that seqNumber not already performed
                 String result = "result of command";
                 System.out.println("committing request: " + command.getCommand() + " of client " + clientSessionMap.get(command.getClientId()));
                 clientSessionMap.put(command.getClientId(), command.getClientAddress());
@@ -346,6 +345,12 @@ public class RaftServer extends UntypedPersistentActor {
     @Override
     public String persistenceId() {
         return "id_"; // TODO check
+    }
+
+    private PersistentState buildFromSnapshotOffer(SnapshotOffer snapshotOffer) {
+        PersistentState loadedState = (PersistentState) snapshotOffer.snapshot();
+        loadedState.recreateBroadcastRouter(this);
+        return loadedState;
     }
 
 }

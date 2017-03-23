@@ -1,12 +1,13 @@
 package risakka.raft.miscellanea;
 
 import akka.actor.ActorRef;
-import akka.persistence.UntypedPersistentActor;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
+import risakka.util.Util;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ public class PersistentState implements Serializable {
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
     private Collection<ActorRef> actorsRefs = null;
 
-    public PersistentState(PersistentState persistentState) {
+    private PersistentState(PersistentState persistentState) {
         this.currentTerm = persistentState.currentTerm;
         this.votedFor = persistentState.votedFor;
         this.log = new SequentialContainer<>(persistentState.log);
@@ -32,29 +33,34 @@ public class PersistentState implements Serializable {
         this.actorsRefs.addAll(persistentState.actorsRefs);
     }
 
-    public void updateCurrentTerm(UntypedPersistentActor owner, Integer currentTerm) {
+    public void updateCurrentTerm(RaftServer raftServer, Integer currentTerm) {
         this.currentTerm = currentTerm;
         this.votedFor = null;
-        owner.saveSnapshot(new PersistentState(this));
+        raftServer.saveSnapshot(new PersistentState(this));
     }
 
-    public void updateVotedFor(UntypedPersistentActor owner, ActorRef votedFor) {
+    public void updateVotedFor(RaftServer raftServer, ActorRef votedFor) {
         this.votedFor = votedFor;
-        owner.saveSnapshot(new PersistentState(this));
+        raftServer.saveSnapshot(new PersistentState(this));
     }
 
-    public void updateLog(UntypedPersistentActor owner, int i, LogEntry item) {
+    public void updateLog(RaftServer raftServer, int i, LogEntry item) {
         log.set(i, item);
-        owner.saveSnapshot(new PersistentState(this));
+        raftServer.saveSnapshot(new PersistentState(this));
     }
 
-    public void deleteLogFrom(UntypedPersistentActor owner, int i) {
+    public void deleteLogFrom(RaftServer raftServer, int i) {
         log.deleteFrom(i);
-        owner.saveSnapshot(new PersistentState(this));
+        raftServer.saveSnapshot(new PersistentState(this));
     }
 
-    public void updateActorRefs(UntypedPersistentActor owner, Collection<ActorRef> actorsRefs) {
+    public void updateActorRefs(RaftServer raftServer, Collection<ActorRef> actorsRefs) {
         this.actorsRefs = actorsRefs;
-        owner.saveSnapshot(new PersistentState(this));
+        recreateBroadcastRouter(raftServer);
+        raftServer.saveSnapshot(new PersistentState(this));
+    }
+
+    public void recreateBroadcastRouter(RaftServer raftServer) {
+        raftServer.setBroadcastRouter(Util.buildBroadcastRouter(raftServer.getSelf(), actorsRefs));
     }
 }
