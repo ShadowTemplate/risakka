@@ -3,6 +3,7 @@ package risakka.raft.message.rpc.server;
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
+import risakka.raft.miscellanea.ServerState;
 import risakka.util.Conf;
 
 @AllArgsConstructor
@@ -17,7 +18,10 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
 
         onProcedureCall(server, term); // A
 
-
+        if(server.getState() != ServerState.CANDIDATE) { //e.g. became follower due to A
+            return;
+        }
+        
         if (term.equals(server.getPersistentState().getCurrentTerm()) && voteGranted) { // l
             System.out.println(server.getSelf().path().name() + " has received vote from " +
                     server.getSender().path().name());
@@ -27,11 +31,7 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
         if (server.getVotersIds().size() > Conf.SERVER_NUMBER / 2) {
             System.out.println(server.getSelf().path().name() + " can now become LEADER");
             server.toLeaderState(); // i
-        } /* TODO Check if this is necessary. No clue about this on the paper...
-        else if (!voteGranted) {
-            System.out.println("\n" + server.getSelf().path().name() + " Received a voteGranted==FALSE. Switching to follower");
-            server.toFollowerState();
-        } */
+        }
 
     }
 }
