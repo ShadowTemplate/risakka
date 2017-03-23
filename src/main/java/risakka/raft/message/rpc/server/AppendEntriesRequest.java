@@ -73,7 +73,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
                     server.getPersistentState().deleteLogFrom(server, currIndex);
                 }
                 server.getPersistentState().updateLog(server, currIndex, entry);
-                server.getEventNotifier().updateLog(server.getId(), entry);
+                server.getEventNotifier().updateLog(server.getId(), currIndex, entry);
                 currIndex++;
             }
             if (leaderCommit > server.getCommitIndex()) {

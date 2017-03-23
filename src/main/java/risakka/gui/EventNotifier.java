@@ -5,7 +5,6 @@ import risakka.raft.log.LogEntry;
 import risakka.raft.miscellanea.ServerState;
 
 import javax.swing.*;
-import java.util.List;
 
 @AllArgsConstructor
 public class EventNotifier {
@@ -17,9 +16,10 @@ public class EventNotifier {
         messagesArea.append(message + "\n");
     }
 
-    public void updateLog(Integer id, LogEntry newEntry) {
+    public void updateLog(Integer id, Integer position, LogEntry entry) {
         JTextArea logArea = risakkaGUI.getServerPanels().get(id).getLogArea();
-        logArea.append(newEntry + "\n");
+        logArea.append("[pos: " + position + ", term: " + entry.getTermNumber() + "] {client: " +
+                entry.getCommand().getClientId() + "}\n" + entry.getCommand().getCommand() + "\n");
     }
 
     public void updateState(Integer id, ServerState state) {

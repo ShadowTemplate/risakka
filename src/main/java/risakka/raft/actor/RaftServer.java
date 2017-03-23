@@ -244,7 +244,7 @@ public class RaftServer extends UntypedPersistentActor {
         LogEntry entry = new LogEntry(persistentState.getCurrentTerm(), command);
         int lastIndex = persistentState.getLog().size();
         persistentState.updateLog(this, lastIndex + 1, entry);
-        eventNotifier.updateLog(id, entry);
+        eventNotifier.updateLog(id, lastIndex + 1, entry);
 
         sendAppendEntriesToAllFollowers(); //w
     }
