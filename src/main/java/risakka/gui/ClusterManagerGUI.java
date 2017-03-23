@@ -138,6 +138,7 @@ public class ClusterManagerGUI implements Runnable {
         textArea.setBackground(backgroundColor);
         textArea.setEditable(false);
         textArea.setLineWrap(true);
+        textArea.setFont(textArea.getFont().deriveFont(13f));
         textArea.addMouseListener(onRightClickClearArea(textArea));
 
         JScrollPane areaScrollPane = new JScrollPane(textArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,

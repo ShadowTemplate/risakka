@@ -105,7 +105,7 @@ public class RaftServer extends UntypedPersistentActor {
 
         if (message instanceof MessageToServer) {
             ((MessageToServer) message).onReceivedBy(this);
-            eventNotifier.addMessage(id, "Received " + message.getClass().getSimpleName());
+            eventNotifier.addMessage(id, "[IN] " + message.getClass().getSimpleName());
         } else if (message instanceof SaveSnapshotSuccess) {
             //Do nothing
         } else if (message instanceof SaveSnapshotFailure) {
