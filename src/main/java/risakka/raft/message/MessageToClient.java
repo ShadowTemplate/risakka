@@ -6,5 +6,5 @@ import java.io.Serializable;
 
 public interface MessageToClient extends Serializable {
 
-    void onReceivedBy(RaftClient client);
+    void onReceivedBy(RaftClient client, Object originalClientRequest);
 }

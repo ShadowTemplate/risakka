@@ -53,7 +53,7 @@ public class RaftServer extends UntypedPersistentActor {
     private ServerState state; // FOLLOWER / CANDIDATE / LEADER
     private Set<String> votersIds;
     private Integer leaderId; //last leader known
-    private LRUSessionMap<Integer, ActorRef> clientSessionMap;
+    private LRUSessionMap<Integer, Integer> clientSessionMap;
 
     // Akka fields
 
@@ -301,40 +301,65 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     public void executeCommands(int minIndex, int maxIndex, Boolean leader) {
-        for (int j = minIndex; j <= maxIndex; j++) { //v send answer back to the client when committed
+        for (int i = minIndex; i <= maxIndex; i++) { //v send answer back to the client when committed
+            executeCommand(i, leader);
+        }
+    }
+    
+    private void executeCommand(int logIndex, Boolean leader) {
+        
+        StateMachineCommand command = persistentState.getLog().get(logIndex).getCommand();
 
-            StateMachineCommand command = persistentState.getLog().get(j).getCommand();
-
-            //registration command of new client
-            if (command.getCommand().equals(RegisterClientRequest.REGISTER)) {
-                System.out.println("Registering client " + command.getClientAddress());
-
-                //create new client session
-                clientSessionMap.put(j, command.getClientAddress()); //allocate new session
-                if (leader) { //answer back to the client
-                    clientSessionMap.get(j).tell(new RegisterClientResponse(Status.OK, j, null), getSelf());
-                }
-                return;
-            }
-
-            //command of client with a valid session
-            if (clientSessionMap.containsKey(command.getClientId())) {
-                //TODO execute command on state machine iff command with that seqNumber not already performed
-                String result = "result of command";
-                System.out.println("committing request: " + command.getCommand() + " of client " + clientSessionMap.get(command.getClientId()));
-                clientSessionMap.put(command.getClientId(), command.getClientAddress());
-                if (leader) { //answer back to the client
-                    clientSessionMap.get(command.getClientId()).tell(new ServerResponse(Status.OK, result, null), getSelf());
-                }
-            } else { //client session is expired
-                System.out.println("Client session of " + command.getClientId() + " is expired");
-                //TODO session expired, command should not be executed
-                if (leader) {
-                    command.getClientAddress().tell(new ServerResponse(Status.SESSION_EXPIRED, null, null), getSelf());
-                }
+        //registration command of new client - new client session
+        if (command.getCommand().equals(RegisterClientRequest.REGISTER)) {
+            System.out.println("Registering client " + command.getClientAddress());
+            clientSessionMap.put(logIndex, -1); //allocate new session
+            if (leader) { //answer back to the client
+                command.getClientAddress().tell(new RegisterClientResponse(Status.OK, logIndex, null), getSelf());
             }
             //TODO update lastApplied
+            return;
         }
+
+        //command of client with a valid session
+        if (clientSessionMap.containsKey(command.getClientId())) {
+            int lastSeqNumber = clientSessionMap.get(command.getClientId());
+
+            String result = "";
+            if (command.getSeqNumber() > lastSeqNumber) { //first time
+                //TODO execute command on state machine
+                result = "executed";
+                
+            } else { //duplicate request - not execute again
+                if (leader) {  //retrieve response to send to client in the log
+                    for (int i = logIndex - 1; i >= 0; i--) {
+                        if (persistentState.getLog().get(i).getCommand().getClientId().equals(command.getClientId())
+                                && persistentState.getLog().get(i).getCommand().getSeqNumber().equals(command.getSeqNumber())) {
+                            //TODO retrieve result
+                            result = "retrieved";
+                            break;
+                        }
+                    }
+                }
+            }
+
+            System.out.println("committing request: " + command.getCommand() + " of client " + clientSessionMap.get(command.getClientId()));
+            //update last request of the client
+            clientSessionMap.put(command.getClientId(), Math.max(command.getSeqNumber(), lastSeqNumber));
+            
+            if (leader) { //answer back to the client
+                command.getClientAddress().tell(new ServerResponse(Status.OK, result, null), getSelf());
+            }
+            //TODO update lastApplied
+            return;
+        } 
+
+        //client session is expired, command should not be executed
+        System.out.println("Client session of " + command.getClientId() + " is expired");
+        if (leader) {
+            command.getClientAddress().tell(new ServerResponse(Status.SESSION_EXPIRED, null, null), getSelf());
+        }
+        //TODO update lastApplied?
     }
 
     public int getSenderServerId() {

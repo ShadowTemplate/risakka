@@ -12,7 +12,7 @@ public class ServerResponse implements MessageToClient {
     private final Integer leaderHint;
 
     @Override
-    public void onReceivedBy(RaftClient client) {
+    public void onReceivedBy(RaftClient client, Object originalClientRequest) {
         System.out.println("Client " + client.getSelf().path().name() +
                 " has received response " + response +
                 " with status " + status);
@@ -22,8 +22,13 @@ public class ServerResponse implements MessageToClient {
                 System.out.println("not leader");
                 if (leaderHint != null) {
                     //send same request to leader hint
+                    client.setServerAddress(client.buildAddressFromId(leaderHint));
+                    client.sendClientRequest((ClientRequest)originalClientRequest);
                 } else {
                     //send same request to a random server
+                    int randomId = client.getRandomServerId();
+                    client.setServerAddress(client.buildAddressFromId(randomId));
+                    client.sendClientRequest((ClientRequest)originalClientRequest);
                 }
                 break;
             case OK:

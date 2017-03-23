@@ -68,17 +68,7 @@ public class RaftClient extends UntypedActor {
         //client should not be contacted by server first
 
         if (message instanceof ClientRequest) {
-            System.out.println(getSelf().path().name() + " sends client request with id " + ((ClientRequest) message).getCommand().getSeqNumber());
-
-            Future<Object> future = Patterns.ask(serverAddress, message, answeringTimeout);
-            try {
-                processResponse(Await.result(future, answeringTimeout.duration()));
-
-            } catch (TimeoutException ex) {
-                System.out.println("Server did't reply. Choosing another server");
-                registerContactingRandomServer(1);
-                //Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            sendClientRequest((ClientRequest)message);
         } else {
             System.out.println("Unknown message type: " + message.getClass());
             unhandled(message);
@@ -86,18 +76,36 @@ public class RaftClient extends UntypedActor {
     }
 
     //process responses of the server
-    public void processResponse(Object message) {
-        if (message instanceof MessageToClient) {
-            System.out.println(getSelf().path().name() + " has received " + message.getClass().getSimpleName());
-            ((MessageToClient) message).onReceivedBy(this);
+    public void processResponse(Object responseMessage) {
+        processResponse(null, responseMessage);
+    }
+    
+    //process responses of the server based on its request
+    public void processResponse(Object requestMessage, Object responseMessage) {
+        if (responseMessage instanceof MessageToClient) {
+            System.out.println(getSelf().path().name() + " has received " + responseMessage.getClass().getSimpleName());
+            ((MessageToClient) responseMessage).onReceivedBy(this, requestMessage);
         } else {
-            System.out.println("Unknown message type: " + message.getClass());
-            unhandled(message);
+            System.out.println("Unknown message type: " + responseMessage.getClass());
+            System.out.println("process");
+            unhandled(responseMessage);
         }
     }
 
     // TODO move the following methods in an appropriate location
 
+    public int getRandomServerId() {
+        int serverToContact = (int) (Math.random() * (Conf.SERVER_NUMBER));
+        System.out.println("Server chosen randomly: " + serverToContact);
+        return serverToContact;
+    }
+
+    public ActorSelection buildAddressFromId(int id) {
+        //TODO split server and client conf
+        return getContext().actorSelection("akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[id] + ":"
+                + Conf.NODES_PORTS[id] + "/user/node_" + id);
+    }
+    
     public void registerContactingRandomServer() {
         registerContactingRandomServer(1);
     }
@@ -105,18 +113,6 @@ public class RaftClient extends UntypedActor {
     private void registerContactingRandomServer(int attempts) {
         //contact a random server
         registerContactingSpecificServer(getRandomServerId(), attempts);
-    }
-
-    private int getRandomServerId() {
-        int serverToContact = (int) (Math.random() * (Conf.SERVER_NUMBER));
-        System.out.println("Server chosen randomly: " + serverToContact);
-        return serverToContact;
-    }
-
-    private ActorSelection buildAddressFromId(int id) {
-        //TODO split server and client conf
-        return getContext().actorSelection("akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[id] + ":"
-                + Conf.NODES_PORTS[id] + "/user/node_" + id);
     }
 
     public void registerContactingSpecificServer(int serverId) {
@@ -133,16 +129,39 @@ public class RaftClient extends UntypedActor {
             processResponse(Await.result(future, answeringTimeout.duration()));
 
         } catch (Exception ex) {
-            Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
-
             if (attempts < MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
                 registerContactingRandomServer(attempts + 1);
             } else { //stop
                 System.out.println("Crashing: no successful registration");
                 getContext().stop(getSelf());
             }
-
         }
+    }
+    
+    public void sendClientRequest(ClientRequest message) {
+        sendClientRequest(message, 1);
+    }
+    
+    private void sendClientRequest(ClientRequest message, int attempts) {
+        System.out.println(getSelf().path().name() + " sends client request with id " + message.getCommand().getSeqNumber() + " - attempt " + attempts);
+
+        Future<Object> future = Patterns.ask(serverAddress, message, answeringTimeout);
+        try {
+            processResponse(message, Await.result(future, answeringTimeout.duration()));
+
+        } catch (TimeoutException ex) {
+            if (attempts < MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
+                System.out.println("Server didn't reply. Choosing another server");
+                serverAddress = buildAddressFromId(getRandomServerId());
+                sendClientRequest(message, attempts + 1);
+            } else { //stop
+                System.out.println("Crashing: no successful response");
+                getContext().stop(getSelf());
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
+        }
+ 
     }
 
     @AllArgsConstructor
@@ -158,7 +177,7 @@ public class RaftClient extends UntypedActor {
                     System.out.println("Type your message to be sent to the server: ");
                     String command = bufferRead.readLine();
 
-                    System.out.println("New command: " + command + " - SeqNumber");
+                    System.out.println("New command: " + command + " - SeqNumber: " + client.seqNumber);
                     client.onReceive(new ClientRequest(new StateMachineCommand(command, client.clientId, client.seqNumber++)));
                 } catch (IOException e) {
                     e.printStackTrace();

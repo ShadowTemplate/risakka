@@ -14,7 +14,7 @@ public class RegisterClientResponse implements MessageToClient {
     private final Integer leaderHint;
 
     @Override
-    public void onReceivedBy(RaftClient client) {
+    public void onReceivedBy(RaftClient client, Object originalClientRequest) {
         System.out.println("Client " + client.getSelf().path().name() +
                 " has received register response with status " + status);    
         
