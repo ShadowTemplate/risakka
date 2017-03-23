@@ -1,6 +1,5 @@
 package risakka.raft.actor;
 
-import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
 import akka.persistence.*;
@@ -327,16 +326,17 @@ public class RaftServer extends UntypedPersistentActor {
 
             String result = "";
             if (command.getSeqNumber() > lastSeqNumber) { //first time
-                //TODO execute command on state machine
-                result = "executed";
+                //execute command on state machine
+                result = applyToStateMachine(logIndex);
                 
             } else { //duplicate request - not execute again
                 if (leader) {  //retrieve response to send to client in the log
                     for (int i = logIndex - 1; i >= 0; i--) {
                         if (persistentState.getLog().get(i).getCommand().getClientId().equals(command.getClientId())
                                 && persistentState.getLog().get(i).getCommand().getSeqNumber().equals(command.getSeqNumber())) {
-                            //TODO retrieve result
-                            result = "retrieved";
+                            //retrieve result
+                            result = persistentState.getLog().get(i).getCommand().getResult();
+                            command.setResult(result); //set same result also to the duplicate entry
                             break;
                         }
                     }
@@ -360,6 +360,12 @@ public class RaftServer extends UntypedPersistentActor {
             command.getClientAddress().tell(new ServerResponse(Status.SESSION_EXPIRED, null, null), getSelf());
         }
         //TODO update lastApplied?
+    }
+    
+    private String applyToStateMachine(int index) {
+        String result = "(log " + index + ") " + Long.toHexString(Double.doubleToLongBits(Math.random()));
+        persistentState.getLog().get(index).getCommand().setResult(result);
+        return result;
     }
 
     public int getSenderServerId() {

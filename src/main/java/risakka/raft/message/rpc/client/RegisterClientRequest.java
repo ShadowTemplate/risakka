@@ -16,7 +16,7 @@ public class RegisterClientRequest implements MessageToServer {
             
             case LEADER:
                 //when the entry will be committed, the client session will be allocated and an answer will be sent back to the client
-                server.addEntryToLogAndSendToFollowers(new StateMachineCommand(REGISTER, null, null, server.getSender()));
+                server.addEntryToLogAndSendToFollowers(new StateMachineCommand(REGISTER, server.getSender()));
                 break;
         
             case FOLLOWER:
