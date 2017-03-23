@@ -22,35 +22,39 @@ public class PersistentState implements Serializable {
     private Integer currentTerm = 0; // a
     private ActorRef votedFor = null;
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
-    private Collection<ActorRef> actorsRefs = new ArrayList<>();
+    private Collection<ActorRef> actorsRefs = null;
 
-    public PersistentState copy() {
-        return new PersistentState(this.currentTerm, this.votedFor, this.log, this.actorsRefs);
+    public PersistentState(PersistentState persistentState) {
+        this.currentTerm = persistentState.currentTerm;
+        this.votedFor = persistentState.votedFor;
+        this.log = new SequentialContainer<>(persistentState.log);
+        this.actorsRefs = new ArrayList<>();
+        this.actorsRefs.addAll(persistentState.actorsRefs);
     }
 
     public void updateCurrentTerm(UntypedPersistentActor owner, Integer currentTerm) {
         this.currentTerm = currentTerm;
         this.votedFor = null;
-        owner.saveSnapshot(this.copy());
+        owner.saveSnapshot(new PersistentState(this));
     }
 
     public void updateVotedFor(UntypedPersistentActor owner, ActorRef votedFor) {
         this.votedFor = votedFor;
-        owner.saveSnapshot(this.copy());
+        owner.saveSnapshot(new PersistentState(this));
     }
 
     public void updateLog(UntypedPersistentActor owner, int i, LogEntry item) {
         log.set(i, item);
-        owner.saveSnapshot(this.copy());
+        owner.saveSnapshot(new PersistentState(this));
     }
 
     public void deleteLogFrom(UntypedPersistentActor owner, int i) {
         log.deleteFrom(i);
-        owner.saveSnapshot(this.copy());
+        owner.saveSnapshot(new PersistentState(this));
     }
 
-    public void updateClusterInfo(UntypedPersistentActor owner, Collection<ActorRef> actorsRefs) {
+    public void updateActorRefs(UntypedPersistentActor owner, Collection<ActorRef> actorsRefs) {
         this.actorsRefs = actorsRefs;
-        owner.saveSnapshot(this.copy());
+        owner.saveSnapshot(new PersistentState(this));
     }
 }

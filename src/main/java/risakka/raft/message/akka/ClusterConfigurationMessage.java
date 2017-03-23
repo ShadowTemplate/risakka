@@ -8,7 +8,6 @@ import risakka.raft.message.MessageToServer;
 import risakka.util.Util;
 
 import java.util.Collection;
-import java.util.List;
 
 @AllArgsConstructor
 public class ClusterConfigurationMessage implements MessageToServer {
@@ -19,9 +18,8 @@ public class ClusterConfigurationMessage implements MessageToServer {
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println(server.getSelf().path().name() + " has received cluster information: " + actors);
-        server.setActorsRefs(actors);
+        server.getPersistentState().updateActorRefs(server, actors);
         server.setBroadcastRouter(Util.buildBroadcastRouter(server.getSelf(), actors));
-        server.persistClusterInfo(actors); //saving cluster nodes Ref to persistent storage
         server.setEventNotifier(eventNotifier);
     }
 }

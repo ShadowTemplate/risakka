@@ -1,15 +1,23 @@
 package risakka.raft.miscellanea;
 
+import risakka.util.ImmutableCopy;
+
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class SequentialContainer<E> implements Serializable {
+public class SequentialContainer<E extends ImmutableCopy<E>> implements Serializable {
 
     private static final int DEFAULT_INITIAL_CAPACITY = 25;
     private ArrayList<E> entries;
 
     SequentialContainer() {
         entries = new ArrayList<>(DEFAULT_INITIAL_CAPACITY);
+    }
+
+    SequentialContainer(SequentialContainer<E> sequentialContainer) {
+        this.entries = new ArrayList<>(DEFAULT_INITIAL_CAPACITY);
+        entries.addAll(sequentialContainer.entries.stream().map(ImmutableCopy::immutableCopy).collect(Collectors.toList()));
     }
 
     public E get(int i) { // INDEX STARTS FROM 1

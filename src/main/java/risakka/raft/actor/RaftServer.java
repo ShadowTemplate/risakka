@@ -58,7 +58,6 @@ public class RaftServer extends UntypedPersistentActor {
     // Akka fields
 
     // volatile fields
-    private Collection<ActorRef> actorsRefs;
     private Router broadcastRouter;
     private Cancellable heartbeatSchedule;
     private Cancellable electionSchedule;
@@ -78,7 +77,6 @@ public class RaftServer extends UntypedPersistentActor {
         this.commitIndex = 0;
         this.lastApplied = 0;
         this.leaderId = null;
-        this.actorsRefs = null;
         this.broadcastRouter = null;
         this.eventNotifier = null;
         this.id = id;
@@ -97,7 +95,7 @@ public class RaftServer extends UntypedPersistentActor {
     public void onReceiveCommand(Object message) throws Throwable {
         System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
 
-        if (actorsRefs == null && broadcastRouter == null && eventNotifier == null // server not initialized
+        if (persistentState.getActorsRefs() == null && broadcastRouter == null && eventNotifier == null // server not initialized
                 && message instanceof MessageToServer // not an Akka internal message (e.g. snapshot-related) I would still be able to process
                 && !(message instanceof ClusterConfigurationMessage)) { // not the message I was waiting to init myself
             System.out.println(getSelf().path().name() + " can't process message because it is still uninitialized");
@@ -124,8 +122,7 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println(getSelf().path().name() + " has received recover " + message.getClass().getSimpleName());
         if (message instanceof SnapshotOffer) { // called when server recovers from durable storage
             persistentState = (PersistentState) ((SnapshotOffer) message).snapshot();
-            actorsRefs = persistentState.getActorsRefs();
-            broadcastRouter = Util.buildBroadcastRouter(getSelf(), actorsRefs);
+            broadcastRouter = Util.buildBroadcastRouter(getSelf(), persistentState.getActorsRefs());
             System.out.println(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
         } else if (message instanceof RecoveryCompleted) {
             System.out.println("Recovery completed");
@@ -351,7 +348,4 @@ public class RaftServer extends UntypedPersistentActor {
         return "id_"; // TODO check
     }
 
-    public void persistClusterInfo(Collection<ActorRef> actorsRefs) {
-        persistentState.updateClusterInfo(this, this.actorsRefs);
-    }
 }
