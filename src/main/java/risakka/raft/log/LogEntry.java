@@ -10,8 +10,8 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class LogEntry implements Serializable {
 
-    private StateMachineCommand command; // r
     private Integer termNumber; // r
+    private StateMachineCommand command; // r
     // private Integer positionInLog;
 
 }

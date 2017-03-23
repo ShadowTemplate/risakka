@@ -17,11 +17,9 @@ public class EventNotifier {
         messagesArea.append(message + "\n");
     }
 
-    public void updateLog(Integer id, List<LogEntry> newEntries) {
+    public void updateLog(Integer id, LogEntry newEntry) {
         JTextArea logArea = risakkaGUI.getServerPanels().get(id).getLogArea();
-        for (LogEntry newEntry : newEntries) {
-            logArea.append(newEntry + "\n");
-        }
+        logArea.append(newEntry + "\n");
     }
 
     public void updateState(Integer id, ServerState state) {
