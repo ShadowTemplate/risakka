@@ -26,6 +26,7 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
                 isLogUpToDate(server, lastLogIndex, lastLogTerm)) { // n
             System.out.println(server.getSelf().path().name() + " grants vote to " + server.getSender().path().name() + "\n");
             server.getPersistentState().updateVotedFor(server, server.getSelf());
+            server.scheduleElection(); //granting vote --> reschedule election timeout
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), true);
         } else {
             System.out.println(server.getSelf().path().name() + " has log not matching and denies vote to " + server.getSender().path().name() + "\n");
