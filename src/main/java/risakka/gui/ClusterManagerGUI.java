@@ -80,7 +80,9 @@ public class ClusterManagerGUI implements Runnable {
                 ActorRef newActor = clusterManager.getActorSystems().get(nodeId).actorOf(Props.create(RaftServer.class, nodeId), "node_" + nodeId);
                 clusterManager.getActors().put(nodeId, newActor);
 
-                newActor.tell(new ClusterConfigurationMessage(clusterManager.getActors().values(), new EventNotifier(this)), newActor);
+                for (ActorRef actorRef : clusterManager.getActors().values()) {
+                    actorRef.tell(new ClusterConfigurationMessage(clusterManager.getActors().values(), new EventNotifier(this)), actorRef);
+                }
             }
         });
     }
