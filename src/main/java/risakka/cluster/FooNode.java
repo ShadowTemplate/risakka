@@ -31,7 +31,7 @@ public class FooNode extends UntypedPersistentActor {
             state = new PersistentState(1, getSender(), null, null);
         }
         if (message instanceof String) {
-            saveSnapshot(state.copy());
+            saveSnapshot(new PersistentState(state));
             System.out.println("Received message: " + (String) message + " from " + getSender());
         }
 

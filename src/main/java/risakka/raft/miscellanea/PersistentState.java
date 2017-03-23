@@ -25,7 +25,7 @@ public class PersistentState implements Serializable {
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
     private Collection<ActorRef> actorsRefs = null;
 
-    private PersistentState(PersistentState persistentState) {
+    public PersistentState(PersistentState persistentState) {
         this.currentTerm = persistentState.currentTerm;
         this.votedFor = persistentState.votedFor;
         this.log = new SequentialContainer<>(persistentState.log);
