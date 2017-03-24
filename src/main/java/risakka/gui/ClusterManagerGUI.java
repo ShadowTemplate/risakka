@@ -3,16 +3,19 @@ package risakka.gui;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
+import akka.actor.Terminated;
 import lombok.Getter;
 import risakka.cluster.ClusterManager;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.akka.ClusterConfigurationMessage;
+import scala.concurrent.Future;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 public class ClusterManagerGUI implements Runnable {
@@ -33,7 +36,17 @@ public class ClusterManagerGUI implements Runnable {
         frame.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
                 System.out.println("Shutting down actor systems...");
-                clusterManager.getActorSystems().forEach(ActorSystem::shutdown);
+                List<Future<Terminated>> futures = clusterManager.getActorSystems().parallelStream()
+                        .map(ActorSystem::terminate).collect(Collectors.toList());
+
+                for (Future<Terminated> future : futures) {
+                    while (!future.isCompleted()) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException ignored) {
+                        }
+                    }
+                }
             }
         });
         frame.setSize(getWindowDimension(nodesNumber));
