@@ -23,7 +23,7 @@ public class StateMachineCommand implements Serializable {
         this.clientId = stateMachineCommand.clientId;
         this.seqNumber = stateMachineCommand.seqNumber;
         this.clientAddress = stateMachineCommand.clientAddress;
-        this.result = null;
+        this.result = stateMachineCommand.result;
     }
 
     public StateMachineCommand(String command, Integer clientId, Integer seqNumber) {
