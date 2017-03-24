@@ -120,7 +120,7 @@ public class ClusterManagerGUI implements Runnable {
 
     private JPanel buildServerPanel(ServerPanel serverPanel, Color backgroundColor) {
         JPanel logContainer = new JPanel();
-        logContainer.setSize(500, 400);
+        logContainer.setSize(480, 400);
         logContainer.add(buildScrollableTextArea(serverPanel.getMessagesArea(), "Messages", backgroundColor));
         logContainer.add(buildScrollableTextArea(serverPanel.getLogArea(), "Persistent Log", backgroundColor));
 
