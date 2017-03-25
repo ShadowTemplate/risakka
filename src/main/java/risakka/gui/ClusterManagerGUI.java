@@ -11,6 +11,7 @@ import risakka.raft.message.akka.ClusterConfigurationMessage;
 import scala.concurrent.Future;
 
 import javax.swing.*;
+import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
@@ -153,6 +154,9 @@ public class ClusterManagerGUI implements Runnable {
         textArea.setLineWrap(true);
         textArea.setFont(textArea.getFont().deriveFont(13f));
         textArea.addMouseListener(onRightClickClearArea(textArea));
+
+        DefaultCaret caret = (DefaultCaret) textArea.getCaret();
+        caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 
         JScrollPane areaScrollPane = new JScrollPane(textArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
