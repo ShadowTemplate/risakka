@@ -323,7 +323,7 @@ public class RaftServer extends UntypedPersistentActor {
         
         StateMachineCommand command = persistentState.getLog().get(logIndex).getCommand();
 
-        if (command.getCommand().equals("NOP") && !leader) {
+        if (command.getCommand().equals("NOP")) {
             System.out.println("[DEBUG- TEST] Received a NOP. Operation not executed");
             return;
         }
@@ -362,9 +362,9 @@ public class RaftServer extends UntypedPersistentActor {
                 }
             }
 
-            System.out.println("committing request: " + command.getCommand() + " of client " + clientSessionMap.get(command.getClientId()));
             //update last request of the client
             clientSessionMap.put(command.getClientId(), Math.max(command.getSeqNumber(), lastSeqNumber));
+            System.out.println(getSelf().path().name() + " is committing request: " + command.getCommand() + " of client " + command.getClientId() + " and seqNumber: " + clientSessionMap.get(command.getClientId()));
             
             if (leader) { //answer back to the client
                 command.getClientAddress().tell(new ServerResponse(Status.OK, result, null), getSelf());
