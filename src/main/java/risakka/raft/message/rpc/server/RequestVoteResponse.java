@@ -31,6 +31,7 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
         if (server.getVotersIds().size() > Conf.SERVER_NUMBER / 2) {
             System.out.println(server.getSelf().path().name() + " can now become LEADER");
             server.toLeaderState(); // i
+            server.sendNoOp(); // used by the current leader to ensure that current term entry are stored on a majority of servers
         }
 
     }

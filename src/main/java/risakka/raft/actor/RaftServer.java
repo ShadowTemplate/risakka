@@ -164,6 +164,12 @@ public class RaftServer extends UntypedPersistentActor {
         initializeNextAndMatchIndex(); //B
     }
 
+    public void sendNoOp() {
+        StateMachineCommand nop = new StateMachineCommand("NOP", getSelf());
+
+        addEntryToLogAndSendToFollowers(nop);
+    }
+
     private void startHeartbeating() {
         cancelSchedule(heartbeatSchedule);
         // Schedule a new heartbeat for itself. Starts immediately and repeats every HEARTBEAT_FREQUENCY
@@ -308,6 +314,11 @@ public class RaftServer extends UntypedPersistentActor {
     private void executeCommand(int logIndex, Boolean leader) {
         
         StateMachineCommand command = persistentState.getLog().get(logIndex).getCommand();
+
+        if (command.getCommand().equals("NOP") && !leader) {
+            System.out.println("[DEBUG- TEST] Received a NOP. Operation not executed");
+            return;
+        }
 
         //registration command of new client - new client session
         if (command.getCommand().equals(RegisterClientRequest.REGISTER)) {
