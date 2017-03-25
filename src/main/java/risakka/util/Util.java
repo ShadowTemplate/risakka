@@ -15,7 +15,7 @@ import static java.util.stream.Collectors.toMap;
 
 public class Util {
 
-    public static int getElectionTimeout() {
+    public static int getRandomElectionTimeout() {
         return Conf.HEARTBEAT_FREQUENCY * 4 + (new Random().nextInt(Conf.HEARTBEAT_FREQUENCY * 2));
         // TODO check the math. Election timeouts should be chosen randomly from a fixed interval (150-300 ms)
     }

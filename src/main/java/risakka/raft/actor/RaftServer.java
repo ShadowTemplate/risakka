@@ -41,14 +41,14 @@ public class RaftServer extends UntypedPersistentActor {
     private Integer commitIndex;
     private Integer lastApplied;
 
-    // leader volatile fields // TODO REINITIALIZE AFTER ELECTION
+    // leader volatile fields
     private int[] nextIndex;
     private int[] matchIndex;
 
 
     // Raft other fields
 
-    // volatile TODO is this right?
+    // volatile
     private ServerState state; // FOLLOWER / CANDIDATE / LEADER
     private Set<String> votersIds;
     private Integer leaderId; //last leader known
@@ -191,7 +191,7 @@ public class RaftServer extends UntypedPersistentActor {
         // TODO check if, in addition, ElectionTimeoutMessage in Inbox should be removed
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
-        int electionTimeout = Util.getElectionTimeout(); // p
+        int electionTimeout = Util.getRandomElectionTimeout(); // p
         System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
         electionSchedule = getContext().system().scheduler().scheduleOnce(
                 Duration.create(electionTimeout, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
@@ -217,7 +217,6 @@ public class RaftServer extends UntypedPersistentActor {
         leaderId = null;
         getPersistentState().updateVotedFor(this, getSelf());
         votersIds.add(getSelf().path().toSerializationFormat()); // f
-        // TODO change randomly my electionTimeout
         scheduleElection(); // g
         System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
 
@@ -226,9 +225,7 @@ public class RaftServer extends UntypedPersistentActor {
         broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
     }
 
-    // TODO move the following methods in an appropriate location
-
-    public void initializeNextAndMatchIndex() { //B
+    private void initializeNextAndMatchIndex() { //B
         for (int i = 0; i < nextIndex.length; i++) {
             nextIndex[i] = persistentState.getLog().size() + 1;
             matchIndex[i] = 0;
