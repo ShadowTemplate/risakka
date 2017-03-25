@@ -7,11 +7,10 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
-import risakka.util.Util;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 @ToString
 @Getter
@@ -25,37 +24,49 @@ public class PersistentState implements Serializable {
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
     private Collection<ActorRef> actorsRefs = null;
 
-    public PersistentState(PersistentState persistentState) {
-        this.currentTerm = persistentState.currentTerm;
-        this.votedFor = persistentState.votedFor;
-        this.log = new SequentialContainer<>(persistentState.log);
-        this.actorsRefs = new ArrayList<>();
-        this.actorsRefs.addAll(persistentState.actorsRefs);
-    }
-
-    public void updateCurrentTerm(RaftServer raftServer, Integer currentTerm) {
+    public void updateCurrentTerm(RaftServer raftServer, Integer currentTerm, Runnable onSuccess) {
         this.currentTerm = currentTerm;
         this.votedFor = null;
-        raftServer.saveSnapshot(new PersistentState(this));
+        raftServer.persist(this, ignored -> {
+            onSuccess.run();
+        });
     }
 
-    public void updateVotedFor(RaftServer raftServer, ActorRef votedFor) {
+    public void updateVotedFor(RaftServer raftServer, ActorRef votedFor, Runnable onSuccess) {
         this.votedFor = votedFor;
-        raftServer.saveSnapshot(new PersistentState(this));
+        raftServer.persist(this, ignored -> {
+            onSuccess.run();
+        });
     }
 
-    public void updateLog(RaftServer raftServer, int i, LogEntry item) {
+    public void updateLog(RaftServer raftServer, int i, LogEntry item, Runnable onSuccess) {
         log.set(i, item);
-        raftServer.saveSnapshot(new PersistentState(this));
+        raftServer.persist(this, ignored -> {
+            onSuccess.run();
+        });
     }
 
-    public void deleteLogFrom(RaftServer raftServer, int i) {
-        log.deleteFrom(i);
-        raftServer.saveSnapshot(new PersistentState(this));
+    public void updateLog(RaftServer raftServer, int startIndex, List<LogEntry> entries, Runnable onSuccess) {
+        int currIndex = startIndex;
+        for (LogEntry entry : entries) {
+            if (log.size() >= currIndex && // there is already an entry in that position
+                    !log.get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
+                log.deleteFrom(currIndex);
+            }
+            log.set(currIndex, entry);
+            raftServer.getEventNotifier().updateLog(raftServer.getId(), currIndex, entry);
+            currIndex++;
+        }
+        raftServer.persist(this, ignored -> {
+            onSuccess.run();
+        });
     }
 
-    public void updateActorRefs(RaftServer raftServer, Collection<ActorRef> actorsRefs) {
+    public void updateActorRefs(RaftServer raftServer, Collection<ActorRef> actorsRefs,
+                                Runnable onSuccess) {
         this.actorsRefs = actorsRefs;
-        raftServer.saveSnapshot(new PersistentState(this));
+        raftServer.persist(this, ignored -> {
+            onSuccess.run();
+        });
     }
 }

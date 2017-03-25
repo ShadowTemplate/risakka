@@ -46,13 +46,13 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 
         //AppendEntries (including heartbeat) with older term 
         if (term < server.getPersistentState().getCurrentTerm()) {
-                response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
-                server.getSender().tell(response, server.getSelf());
-                return;
+            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
+            server.getSender().tell(response, server.getSelf());
+            return;
         }
-        
+
         server.setLeaderId(server.getSenderServerId()); //the sender is the leader
-        
+
         //heartbeat still valid
         if (entries.isEmpty()) {
             server.scheduleElection();
@@ -60,7 +60,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
             server.getSender().tell(response, server.getSelf());
             return;
         }
-        
+
         //AppendEntries (excluding heartbeat) still valid
         
         /* CASE FAIL
@@ -71,27 +71,19 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
         if (prevLogIndex != null && (server.getPersistentState().getLog().size() < prevLogIndex || //prevLogIndex == null when log is empty
                 !server.getPersistentState().getLog().get(prevLogIndex).getTermNumber().equals(prevLogTerm))) {
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, -1);
-        
-        } else { /*CASE SUCCEED*/
-            
-            int currIndex = (prevLogIndex == null) ? 1 : prevLogIndex + 1; //null iff it is the first entry to commit
-            
-            for (LogEntry entry : entries) { // TODO optimize by adding all entries at once in the log & saving snapshot once
-                if (server.getPersistentState().getLog().size() >= currIndex && // there is already an entry in that position
-                        !server.getPersistentState().getLog().get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
-                    server.getPersistentState().deleteLogFrom(server, currIndex);
-                }
-                server.getPersistentState().updateLog(server, currIndex, entry);
-                server.getEventNotifier().updateLog(server.getId(), currIndex, entry);
-                currIndex++;
-            }
+            server.getSender().tell(response, server.getSelf());
+            return;
+        }
+
+        /*CASE SUCCEED*/
+        int startIndex = (prevLogIndex == null) ? 1 : prevLogIndex + 1; //null iff it is the first entry to commit
+        server.getPersistentState().updateLog(server, startIndex, entries, () -> {
             if (leaderCommit > server.getCommitIndex()) {
                 int oldCommitIndex = server.getCommitIndex();
-                server.setCommitIndex(Integer.min(leaderCommit, currIndex - 1));
+                server.setCommitIndex(Integer.min(leaderCommit, startIndex + entries.size() - 1));
                 server.executeCommands(oldCommitIndex + 1, server.getCommitIndex(), false); //execute commands known to be committed
             }
-            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, currIndex - 1); 
-        }
-        server.getSender().tell(response, server.getSelf());
+            server.getSender().tell(new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, startIndex + entries.size() - 1), server.getSelf());
+        });
     }
 }

@@ -24,16 +24,22 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
         if (term < server.getPersistentState().getCurrentTerm()) { // m
             System.out.println(server.getSelf().path().name() + " has higher term than and denies vote to " + server.getSender().path().name() + "\n");
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
-        } else if ((server.getPersistentState().getVotedFor() == null || server.getPersistentState().getVotedFor().equals(server.getSender())) &&
+            server.getSender().tell(response, server.getSelf());
+            return;
+        }
+
+        if ((server.getPersistentState().getVotedFor() == null || server.getPersistentState().getVotedFor().equals(server.getSender())) &&
                 isLogUpToDate(server, lastLogIndex, lastLogTerm)) { // n
             System.out.println(server.getSelf().path().name() + " grants vote to " + server.getSender().path().name() + "\n");
-            server.getPersistentState().updateVotedFor(server, server.getSelf());
-            server.scheduleElection(); //granting vote --> reschedule election timeout
-            response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), true);
-        } else {
-            System.out.println(server.getSelf().path().name() + " has log not matching and denies vote to " + server.getSender().path().name() + "\n");
-            response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
+            server.getPersistentState().updateVotedFor(server, server.getSelf(), () -> {
+                server.scheduleElection(); //granting vote --> reschedule election timeout
+                server.getSender().tell(new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), true), server.getSelf());
+            });
+            return;
         }
+
+        System.out.println(server.getSelf().path().name() + " has log not matching and denies vote to " + server.getSender().path().name() + "\n");
+        response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
         server.getSender().tell(response, server.getSelf());
     }
 

@@ -4,15 +4,15 @@ import risakka.raft.actor.RaftServer;
 
 public class ServerRPC {
 
-    public void onProcedureCall(RaftServer server, Integer term) { // A
+    void onProcedureCall(RaftServer server, Integer term) { // A
         if (term > server.getPersistentState().getCurrentTerm()) {
-            server.getPersistentState().updateCurrentTerm(server, term);
-            if (server.getEventNotifier() != null) {
-                server.getEventNotifier().updateTerm(server.getId(), term);
-            }
-            server.toFollowerState();
-            server.setLeaderId(null);
+            server.getPersistentState().updateCurrentTerm(server, term, () -> {
+                if (server.getEventNotifier() != null) {
+                    server.getEventNotifier().updateTerm(server.getId(), term);
+                }
+                server.toFollowerState();
+                server.setLeaderId(null);
+            });
         }
-
     }
 }

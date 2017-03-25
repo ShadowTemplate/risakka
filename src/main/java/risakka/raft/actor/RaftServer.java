@@ -1,6 +1,5 @@
 package risakka.raft.actor;
 
-import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
 import akka.persistence.*;
@@ -14,20 +13,11 @@ import risakka.gui.EventNotifier;
 import risakka.raft.log.LogEntry;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToServer;
-import risakka.raft.message.akka.ClusterConfigurationMessage;
-import risakka.raft.message.akka.ElectionTimeoutMessage;
-import risakka.raft.message.akka.SendHeartbeatMessage;
-import risakka.raft.message.rpc.client.RegisterClientRequest;
-import risakka.raft.message.rpc.client.RegisterClientResponse;
-import risakka.raft.message.rpc.client.ServerResponse;
-import risakka.raft.message.rpc.client.Status;
-import risakka.raft.message.rpc.server.AppendEntriesRequest;
-import risakka.raft.message.rpc.server.RequestVoteRequest;
-import risakka.raft.miscellanea.LRUSessionMap;
-import risakka.raft.miscellanea.PersistentState;
-import risakka.raft.miscellanea.ServerState;
-import risakka.util.Conf;
-import risakka.util.Util;
+import risakka.raft.message.akka.*;
+import risakka.raft.message.rpc.client.*;
+import risakka.raft.message.rpc.server.*;
+import risakka.raft.miscellanea.*;
+import risakka.util.*;
 import scala.concurrent.duration.Duration;
 
 @Getter
@@ -171,7 +161,6 @@ public class RaftServer extends UntypedPersistentActor {
 
     private void sendNoOp() {
         StateMachineCommand nop = new StateMachineCommand("NO-OP", getSelf());
-
         addEntryToLogAndSendToFollowers(nop);
     }
 
@@ -208,25 +197,27 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void beginElection() { // d
         votersIds.clear();
-        persistentState.updateCurrentTerm(this, persistentState.getCurrentTerm() + 1); // b
-        if (eventNotifier != null) {
-            eventNotifier.updateTerm(id, persistentState.getCurrentTerm());
-        }
-        leaderId = null;
-        getPersistentState().updateVotedFor(this, getSelf());
-        votersIds.add(getSelf().path().toSerializationFormat()); // f
-        scheduleElection(); // g
-        System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
+        persistentState.updateCurrentTerm(this, persistentState.getCurrentTerm() + 1, () -> { // b
+            if (eventNotifier != null) {
+                eventNotifier.updateTerm(id, persistentState.getCurrentTerm());
+            }
+            leaderId = null;
+            getPersistentState().updateVotedFor(this, getSelf(), () -> {
+                votersIds.add(getSelf().path().toSerializationFormat()); // f
+                scheduleElection(); // g
+                System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
 
-        int lastLogIndex = persistentState.getLog().size();
-        int lastLogTerm = getLastLogTerm(lastLogIndex);
-        sendBroadcastRequest(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm));
+                int lastLogIndex = persistentState.getLog().size();
+                int lastLogTerm = getLastLogTerm(lastLogIndex);
+                sendBroadcastRequest(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm));
+            });
+        });
     }
 
     private void sendBroadcastRequest(MessageToServer message) {
-        for (ActorRef actorRef : persistentState.getActorsRefs()) {
+        persistentState.getActorsRefs().stream().filter(actorRef -> !actorRef.equals(getSelf())).forEach(actorRef -> {
             actorRef.tell(message, getSelf());
-        }
+        });
     }
 
     private void initializeNextAndMatchIndex() { //B
@@ -256,13 +247,13 @@ public class RaftServer extends UntypedPersistentActor {
     public void addEntryToLogAndSendToFollowers(StateMachineCommand command) { //u
         LogEntry entry = new LogEntry(persistentState.getCurrentTerm(), command);
         int lastIndex = persistentState.getLog().size();
-        persistentState.updateLog(this, lastIndex + 1, entry);
-        eventNotifier.updateLog(id, lastIndex + 1, entry);
-
-        sendAppendEntriesToAllFollowers(); //w
+        persistentState.updateLog(this, lastIndex + 1, entry, () -> {
+            eventNotifier.updateLog(id, lastIndex + 1, entry);
+            sendAppendEntriesToAllFollowers(); //w
+        });
     }
 
-    public void sendAppendEntriesToAllFollowers() { //w
+    private void sendAppendEntriesToAllFollowers() { //w
         for (int i = 0; i < nextIndex.length; i++) {
             if (i != id) { //if not myself
                 sendAppendEntriesToOneFollower(this, i);
