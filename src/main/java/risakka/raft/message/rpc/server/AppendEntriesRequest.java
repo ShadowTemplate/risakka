@@ -21,6 +21,15 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
     @Override
     public void onReceivedBy(RaftServer server) {
 //        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
+        if (entries.isEmpty()) {
+            server.getEventNotifier().addMessage(server.getId(), "[IN] Heartbeat ["
+                    + server.getSender().path().name() + "]\nTerm: " + term + ", prevLogTerm: " + prevLogTerm
+                    + ", prevLogIndex: " + prevLogIndex + ", leaderCommit: " + leaderCommit);
+        } else {
+            server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " ["
+                    + server.getSender().path().name() + "]\nTerm: " + term + ", prevLogTerm: " + prevLogTerm
+                    + ", prevLogIndex: " + prevLogIndex + ", leaderCommit: " + leaderCommit + ", entries:\n" + entries);
+        }
 
         onProcedureCall(server, term); // A
 
@@ -67,7 +76,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
             
             int currIndex = (prevLogIndex == null) ? 1 : prevLogIndex + 1; //null iff it is the first entry to commit
             
-            for (LogEntry entry : entries) {
+            for (LogEntry entry : entries) { // TODO optimize by adding all entries at once in the log & saving snapshot once
                 if (server.getPersistentState().getLog().size() >= currIndex && // there is already an entry in that position
                         !server.getPersistentState().getLog().get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
                     server.getPersistentState().deleteLogFrom(server, currIndex);

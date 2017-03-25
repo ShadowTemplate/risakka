@@ -104,13 +104,20 @@ public class RaftServer extends UntypedPersistentActor {
 
         if (message instanceof MessageToServer) {
             ((MessageToServer) message).onReceivedBy(this);
-            eventNotifier.addMessage(id, "[IN] " + message.getClass().getSimpleName());
         } else if (message instanceof SaveSnapshotSuccess) {
-            //Do nothing
+            if (eventNotifier != null) {
+                eventNotifier.addMessage(id, "[IN] " + message.getClass().getSimpleName());
+            }
         } else if (message instanceof SaveSnapshotFailure) {
             System.out.println("Error while performing the snapshot. " + message);
+            if (eventNotifier != null) {
+                eventNotifier.addMessage(id, "[IN] " + message.getClass().getSimpleName() + "\nCause: " + ((SaveSnapshotFailure) message).cause());
+            }
         } else {
             System.out.println("Unknown message type: " + message.getClass());
+            if (eventNotifier != null) {
+                eventNotifier.addMessage(id, "[IN] Unknown message type: " + message.getClass().getSimpleName());
+            }
             unhandled(message);
         }
     }
@@ -159,13 +166,13 @@ public class RaftServer extends UntypedPersistentActor {
         leaderId = id;
         cancelSchedule(electionSchedule);
         startHeartbeating();
-
         // Reinitialize volatile state after election
         initializeNextAndMatchIndex(); //B
+        sendNoOp(); // used by the current leader to ensure that current term entry are stored on a majority of servers
     }
 
-    public void sendNoOp() {
-        StateMachineCommand nop = new StateMachineCommand("NOP", getSelf());
+    private void sendNoOp() {
+        StateMachineCommand nop = new StateMachineCommand("NO-OP", getSelf());
 
         addEntryToLogAndSendToFollowers(nop);
     }

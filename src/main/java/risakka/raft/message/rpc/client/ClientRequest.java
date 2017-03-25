@@ -14,7 +14,9 @@ public class ClientRequest implements MessageToServer {
 
     @Override
     public void onReceivedBy(RaftServer server) {  // t
-        System.out.println("Server " + server.getSelf().path().name() + " in state " + server.getState() + " has received ClientRequestMessage");
+        System.out.println("Server " + server.getSelf().path().name() + " in state " + server.getState() + " has received ClientRequest");
+        server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() +
+                " [" + server.getSender().path().name() + "]\nCommand: " + command);
 
         switch (server.getState()) {
             case LEADER:

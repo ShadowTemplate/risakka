@@ -13,7 +13,7 @@ public class EventNotifier {
 
     public void addMessage(Integer id, String message) {
         JTextArea messagesArea = risakkaGUI.getServerPanels().get(id).getMessagesArea();
-        messagesArea.append(message + "\n");
+        messagesArea.append(message + "\n\n");
     }
 
     public void updateLog(Integer id, Integer position, LogEntry entry) {
@@ -25,7 +25,7 @@ public class EventNotifier {
     public void updateState(Integer id, ServerState state) {
         String color;
         if (state == ServerState.LEADER) {
-            color = "#00ff2a";
+            color = "#1a7a07";
         } else if (state == ServerState.CANDIDATE) {
             color = "#ff0015";
         } else {

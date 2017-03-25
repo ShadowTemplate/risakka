@@ -10,21 +10,28 @@ public class AppendEntriesResponse extends ServerRPC implements MessageToServer 
 
     private final Integer term;
     private final Boolean success;
-    
+
     //field needed to update nextIndex and matchIndex 
     private final Integer lastEntryIndex;
 
     @Override
     public void onReceivedBy(RaftServer server) {
 //        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse with success: " + success);
+        if (lastEntryIndex == null) { // heartbeat
+            server.getEventNotifier().addMessage(server.getId(), "[IN] Heartbeat ACK [" + server.getSender().path().name() + "]");
+        } else { // request succeeded or failed
+            server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " ["
+                    + server.getSender().path().name() + "]\nTerm: " + term + ", success: " + success + ", lastEntryIndex: "
+                    + lastEntryIndex);
+        }
 
         onProcedureCall(server, term); // A
-        
+
         //leader became follower due to A or received a successful heartbeat
-        if(server.getState() != ServerState.LEADER || lastEntryIndex == null) {
+        if (server.getState() != ServerState.LEADER || lastEntryIndex == null) {
             return;
         }
-        
+
         //not a heartbeat
         System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse with success: " + success);
         int followerId = server.getSenderServerId();

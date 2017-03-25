@@ -11,9 +11,9 @@ public class RegisterClientRequest implements MessageToServer {
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println("Server " + server.getSelf().path().name() + " in state " + server.getState() + " has received RegisterClientRequest");
+        server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " [" + server.getSender().path().name() + "]");
       
         switch (server.getState()) {
-            
             case LEADER:
                 //when the entry will be committed, the client session will be allocated and an answer will be sent back to the client
                 server.addEntryToLogAndSendToFollowers(new StateMachineCommand(REGISTER, server.getSender()));

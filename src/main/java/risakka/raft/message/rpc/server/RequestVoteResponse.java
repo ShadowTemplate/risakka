@@ -15,6 +15,8 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println("\n" + server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteResponse from " + server.getSender().path().name() + "\n");
+        server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() +
+                " [" + server.getSender().path().name() + "]\nTerm: " + term + ", voteGranted: " + voteGranted);
 
         onProcedureCall(server, term); // A
 
@@ -31,7 +33,6 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
         if (server.getVotersIds().size() > Conf.SERVER_NUMBER / 2) {
             System.out.println(server.getSelf().path().name() + " can now become LEADER");
             server.toLeaderState(); // i
-            server.sendNoOp(); // used by the current leader to ensure that current term entry are stored on a majority of servers
         }
 
     }

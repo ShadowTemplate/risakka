@@ -38,7 +38,7 @@ public class Conf {
 
         CLUSTER_NAME = prop.getProperty("CLUSTER_NAME", "raft-cluster");
         SERVER_NUMBER = Integer.valueOf(prop.getProperty("SERVER_NUMBER", "5"));
-        HEARTBEAT_FREQUENCY = Integer.valueOf(prop.getProperty("HEARTBEAT_FREQUENCY", "1000"));
+        HEARTBEAT_FREQUENCY = Integer.valueOf(prop.getProperty("HEARTBEAT_FREQUENCY", "2000"));
         MAX_CLIENT_SESSIONS = Integer.valueOf(prop.getProperty("MAX_CLIENT_SESSIONS", "10"));
         LOG_FOLDER = prop.getProperty("LOG_FOLDER", "logs");
         NODES_IPS = new String[SERVER_NUMBER];
