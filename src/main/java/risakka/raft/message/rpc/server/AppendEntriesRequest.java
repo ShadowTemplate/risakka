@@ -61,7 +61,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
         System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
         if (prevLogIndex != null && (server.getPersistentState().getLog().size() < prevLogIndex || //prevLogIndex == null when log is empty
                 !server.getPersistentState().getLog().get(prevLogIndex).getTermNumber().equals(prevLogTerm))) {
-            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
+            response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, -1);
         
         } else { /*CASE SUCCEED*/
             
