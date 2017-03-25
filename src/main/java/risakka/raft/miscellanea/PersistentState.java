@@ -56,11 +56,6 @@ public class PersistentState implements Serializable {
 
     public void updateActorRefs(RaftServer raftServer, Collection<ActorRef> actorsRefs) {
         this.actorsRefs = actorsRefs;
-        recreateBroadcastRouter(raftServer);
         raftServer.saveSnapshot(new PersistentState(this));
-    }
-
-    public void recreateBroadcastRouter(RaftServer raftServer) {
-        raftServer.setBroadcastRouter(Util.buildBroadcastRouter(raftServer.getSelf(), actorsRefs));
     }
 }

@@ -1,5 +1,6 @@
 package risakka.raft.message.akka;
 
+import akka.actor.ActorRef;
 import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
@@ -19,7 +20,11 @@ public class SendHeartbeatMessage implements MessageToServer {
     }
 
     private void sendHeartbeat(RaftServer server) {
-        // TODO check if Heartbeat is properly built
-        server.getBroadcastRouter().route(new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), null, null, new ArrayList<>(), server.getCommitIndex()), server.getSelf());
+        for (ActorRef actorRef : server.getPersistentState().getActorsRefs()) {
+            // TODO check if Heartbeat is properly built
+            AppendEntriesRequest message = new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(),
+                    null, null, new ArrayList<>(), server.getCommitIndex());
+            actorRef.tell(message, server.getSelf());
+        }
     }
 }

@@ -1,9 +1,9 @@
 package risakka.raft.actor;
 
+import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
 import akka.persistence.*;
-import akka.routing.Router;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -57,7 +57,6 @@ public class RaftServer extends UntypedPersistentActor {
     // Akka fields
 
     // volatile fields
-    private Router broadcastRouter;
     private Cancellable heartbeatSchedule;
     private Cancellable electionSchedule;
 
@@ -76,7 +75,6 @@ public class RaftServer extends UntypedPersistentActor {
         this.commitIndex = 0;
         this.lastApplied = 0;
         this.leaderId = null;
-        this.broadcastRouter = null;
         this.eventNotifier = null;
         this.id = id;
     }
@@ -94,7 +92,7 @@ public class RaftServer extends UntypedPersistentActor {
     public void onReceiveCommand(Object message) throws Throwable {
         System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
 
-        if (persistentState.getActorsRefs() == null && broadcastRouter == null && eventNotifier == null // server not initialized
+        if (persistentState.getActorsRefs() == null && eventNotifier == null // server not initialized
                 && message instanceof MessageToServer // not an Akka internal message (e.g. snapshot-related) I would still be able to process
                 && !(message instanceof ClusterConfigurationMessage)) { // not the message I was waiting to init myself
             System.out.println(getSelf().path().name() + " can't process message because it is still uninitialized");
@@ -222,7 +220,13 @@ public class RaftServer extends UntypedPersistentActor {
 
         int lastLogIndex = persistentState.getLog().size();
         int lastLogTerm = getLastLogTerm(lastLogIndex);
-        broadcastRouter.route(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm), getSelf());
+        sendBroadcastRequest(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm));
+    }
+
+    private void sendBroadcastRequest(MessageToServer message) {
+        for (ActorRef actorRef : persistentState.getActorsRefs()) {
+            actorRef.tell(message, getSelf());
+        }
     }
 
     private void initializeNextAndMatchIndex() { //B
@@ -394,9 +398,6 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     private PersistentState buildFromSnapshotOffer(SnapshotOffer snapshotOffer) {
-        PersistentState loadedState = (PersistentState) snapshotOffer.snapshot();
-        loadedState.recreateBroadcastRouter(this);
-        return loadedState;
+        return (PersistentState) snapshotOffer.snapshot();
     }
-
 }
