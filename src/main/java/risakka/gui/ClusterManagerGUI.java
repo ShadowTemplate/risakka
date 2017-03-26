@@ -89,7 +89,7 @@ public class ClusterManagerGUI implements Runnable {
                 clusterManager.getActorSystems().get(nodeId).stop(clusterManager.getActors().get(nodeId));
             } else if (ev.getStateChange() == ItemEvent.DESELECTED) {
                 //TODO CHECK RE-INIT HERE
-                System.out.println("Readding node with id " + nodeId);
+                System.out.println("Reading node with id " + nodeId);
                 activeSwitch.setText("ACTIVE");
                 ActorRef newActor = clusterManager.getActorSystems().get(nodeId).actorOf(Props.create(RaftServer.class, nodeId), "node_" + nodeId);
                 clusterManager.getActors().put(nodeId, newActor);

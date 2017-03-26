@@ -115,8 +115,8 @@ public class RaftServer extends UntypedPersistentActor {
     @Override
     public void onReceiveRecover(Object message) throws Throwable {
         System.out.println("[" + getSelf().path().name() + "] Received recover " + message.getClass().getSimpleName());
-        if (message instanceof SnapshotOffer) { // called when server recovers from durable storage
-            persistentState = buildFromSnapshotOffer((SnapshotOffer) message);
+        if (message instanceof PersistentState) { // called when server recovers from durable storage
+            persistentState = (PersistentState) message; //buildFromSnapshotOffer((PersistentState) message);
             System.out.println(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
         } else if (message instanceof RecoveryCompleted) {
             System.out.println("[" + getSelf().path().name() + "] Recovery completed: " + persistentState.toString());
@@ -410,6 +410,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
         return "id_"; // TODO check
     }
 
+    //Still here because it could be useful if we decide to use a snapshot to delete old journals
     private PersistentState buildFromSnapshotOffer(SnapshotOffer snapshotOffer) {
         return (PersistentState) snapshotOffer.snapshot();
     }
