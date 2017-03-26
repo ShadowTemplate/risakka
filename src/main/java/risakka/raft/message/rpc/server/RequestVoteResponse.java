@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
 import risakka.raft.miscellanea.ServerState;
-import risakka.util.Conf;
 
 @AllArgsConstructor
 public class RequestVoteResponse extends ServerRPC implements MessageToServer {
@@ -30,7 +29,7 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
             server.getVotersIds().add(server.getSender().path().toSerializationFormat());
         }
 
-        if (server.getVotersIds().size() > Conf.SERVER_NUMBER / 2) {
+        if (server.getVotersIds().size() > server.getServerConf().SERVER_NUMBER / 2) {
             System.out.println(server.getSelf().path().name() + " can now become LEADER");
             server.toLeaderState(); // i
         }

@@ -1,22 +1,16 @@
 package risakka.util;
 
-import akka.actor.*;
-import akka.routing.ActorRefRoutee;
-import akka.routing.BroadcastRoutingLogic;
-import akka.routing.Routee;
-import akka.routing.Router;
 
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 
-import static java.util.stream.Collectors.toMap;
 
 public class Util {
 
-    public static int getRandomElectionTimeout() {
-        return Conf.HEARTBEAT_FREQUENCY * 4 + (new Random().nextInt(Conf.HEARTBEAT_FREQUENCY * 2));
+    public static int getRandomElectionTimeout(int heartbeatFrequency) {
+        return heartbeatFrequency * 4 + (new Random().nextInt(heartbeatFrequency * 2));
         // TODO check the math. Election timeouts should be chosen randomly from a fixed interval (150-300 ms)
     }
 

@@ -1,5 +1,7 @@
 package risakka.raft.actor;
 
+import risakka.util.conf.server.ServerConfImpl;
+import risakka.util.conf.server.ServerConf;
 import akka.actor.ActorSelection;
 import akka.actor.Cancellable;
 import akka.persistence.*;
@@ -52,15 +54,16 @@ public class RaftServer extends UntypedPersistentActor {
 
     private EventNotifier eventNotifier;
     private Integer id;
-
+    private final ServerConfImpl serverConf;
 
     public RaftServer(Integer id) {
         System.out.println("Creating RaftServer with id " + id);
+        serverConf = ServerConf.SettingsProvider.get(getContext().system());
         this.votersIds = new HashSet<>();
-        this.clientSessionMap = new LRUSessionMap<>(Conf.MAX_CLIENT_SESSIONS);
+        this.clientSessionMap = new LRUSessionMap<>(serverConf.MAX_CLIENT_SESSIONS);
         this.persistentState = new PersistentState();
-        this.nextIndex = new int[Conf.SERVER_NUMBER];
-        this.matchIndex = new int[Conf.SERVER_NUMBER];
+        this.nextIndex = new int[serverConf.SERVER_NUMBER];
+        this.matchIndex = new int[serverConf.SERVER_NUMBER];
         this.initializeNextAndMatchIndex();
         this.commitIndex = 0;
         this.lastApplied = 0;
@@ -167,10 +170,9 @@ public class RaftServer extends UntypedPersistentActor {
     private void startHeartbeating() {
         cancelSchedule(heartbeatSchedule);
         // Schedule a new heartbeat for itself. Starts immediately and repeats every HEARTBEAT_FREQUENCY
-        heartbeatSchedule = getContext().system().scheduler().schedule(
-                Duration.Zero(), // q
+        heartbeatSchedule = getContext().system().scheduler().schedule(Duration.Zero(), // q
                 // Duration.create(0, TimeUnit.MILLISECONDS), // q
-                Duration.create(Conf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(), new SendHeartbeatMessage(), // q
+Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(), new SendHeartbeatMessage(), // q
                 getContext().system().dispatcher(), getSelf());
     }
 
@@ -178,7 +180,7 @@ public class RaftServer extends UntypedPersistentActor {
         // TODO check if, in addition, ElectionTimeoutMessage in Inbox should be removed
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
-        int electionTimeout = Util.getRandomElectionTimeout(); // p
+        int electionTimeout = Util.getRandomElectionTimeout(serverConf.HEARTBEAT_FREQUENCY); // p
         System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
         electionSchedule = getContext().system().scheduler().scheduleOnce(
                 Duration.create(electionTimeout, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
@@ -240,8 +242,8 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     private ActorSelection buildAddressFromId(int id) {
-        return getContext().actorSelection("akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[id] + ":"
-                + Conf.NODES_PORTS[id] + "/user/node_" + id);
+        return getContext().actorSelection("akka.tcp://" + serverConf.CLUSTER_NAME + "@" + serverConf.NODES_IPS[id] + ":"
+                + serverConf.NODES_PORTS[id] + "/user/" + serverConf.PREFIX_NODE_NAME + id);
     }
 
     public void addEntryToLogAndSendToFollowers(StateMachineCommand command) { //u
@@ -296,7 +298,7 @@ public class RaftServer extends UntypedPersistentActor {
                 }
             }
 
-            if (count > Conf.SERVER_NUMBER / 2) {
+            if (count > serverConf.SERVER_NUMBER / 2) {
                 commitIndex = i;
                 executeCommands(oldCommitIndex + 1, commitIndex, true);
                 break;

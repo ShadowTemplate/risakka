@@ -7,6 +7,7 @@ import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.pattern.Patterns;
 import akka.util.Timeout;
+
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
@@ -14,23 +15,25 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-import lombok.Getter;
-import lombok.Setter;
-import risakka.raft.message.rpc.client.ClientRequest;
-import risakka.raft.message.MessageToClient;
-import risakka.raft.log.StateMachineCommand;
-import scala.concurrent.duration.Duration;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+
+import risakka.raft.log.StateMachineCommand;
+import risakka.raft.message.MessageToClient;
+import risakka.raft.message.rpc.client.ClientRequest;
 import risakka.raft.message.rpc.client.RegisterClientRequest;
-import risakka.util.Conf;
+import risakka.util.conf.client.ClientConf;
+import risakka.util.conf.client.ClientConfImpl;
+
 import scala.concurrent.Await;
 import scala.concurrent.Future;
+import scala.concurrent.duration.Duration;
 
 
 @Getter
@@ -44,14 +47,14 @@ public class RaftClient extends UntypedActor {
 
 
     private Timeout answeringTimeout;
-    private int MAX_ATTEMPTS;
+    private final ClientConfImpl clientConf;
 
     public RaftClient() {
         System.out.println("Creating RaftClient");
+        clientConf = ClientConf.SettingsProvider.get(getContext().system());
         this.client = getSelf();
         this.seqNumber = 0;
-        this.MAX_ATTEMPTS = Conf.SERVER_NUMBER; //TODO set an appropriate number
-        this.answeringTimeout = new Timeout(Duration.create(1000, TimeUnit.MILLISECONDS));  //TODO set an appropriate timeout
+        this.answeringTimeout = new Timeout(Duration.create(clientConf.ANSWERING_TIMEOUT, TimeUnit.MILLISECONDS));
     }
 
     @Override
@@ -95,15 +98,14 @@ public class RaftClient extends UntypedActor {
     // TODO move the following methods in an appropriate location
 
     public int getRandomServerId() {
-        int serverToContact = (int) (Math.random() * (Conf.SERVER_NUMBER));
+        int serverToContact = (int) (Math.random() * (clientConf.SERVER_NUMBER));
         System.out.println("Server chosen randomly: " + serverToContact);
         return serverToContact;
     }
 
     public ActorSelection buildAddressFromId(int id) {
-        //TODO split server and client conf
-        return getContext().actorSelection("akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[id] + ":"
-                + Conf.NODES_PORTS[id] + "/user/node_" + id);
+        return getContext().actorSelection("akka.tcp://" + clientConf.SERVER_CLUSTER_NAME + "@" + clientConf.NODES_IPS[id] + ":"
+                + clientConf.NODES_PORTS[id] + "/user/" + clientConf.SERVER_PREFIX_NODE_NAME + id);
     }
     
     public void registerContactingRandomServer() {
@@ -129,7 +131,7 @@ public class RaftClient extends UntypedActor {
             processResponse(Await.result(future, answeringTimeout.duration()));
 
         } catch (Exception ex) {
-            if (attempts < MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
+            if (attempts < clientConf.MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
                 registerContactingRandomServer(attempts + 1);
             } else { //stop
                 System.out.println("Crashing: no successful registration");
@@ -150,7 +152,7 @@ public class RaftClient extends UntypedActor {
             processResponse(message, Await.result(future, answeringTimeout.duration()));
 
         } catch (TimeoutException ex) {
-            if (attempts < MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
+            if (attempts < clientConf.MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
                 System.out.println("Server didn't reply. Choosing another server");
                 serverAddress = buildAddressFromId(getRandomServerId());
                 sendClientRequest(message, attempts + 1);
@@ -193,9 +195,11 @@ public class RaftClient extends UntypedActor {
 
 
         Config config = ConfigFactory.load("client_configuration");
+        ClientConfImpl conf = new ClientConfImpl(config);
+        conf.printConfiguration();
 
-        ActorSystem system = ActorSystem.create(Conf.CLUSTER_NAME, config);
-        system.actorOf(Props.create(RaftClient.class), "client");
+        ActorSystem system = ActorSystem.create(conf.CLIENT_CLUSTER_NAME, config);
+        system.actorOf(Props.create(RaftClient.class), conf.CLIENT_NODE_NAME);
 
 
     }

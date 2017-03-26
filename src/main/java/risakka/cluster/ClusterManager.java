@@ -10,7 +10,6 @@ import lombok.Getter;
 import risakka.gui.ClusterManagerGUI;
 import risakka.gui.EventNotifier;
 import risakka.raft.message.akka.ClusterConfigurationMessage;
-import risakka.util.Conf;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import risakka.raft.actor.RaftServer;
+import risakka.util.conf.server.ServerConfImpl;
 import risakka.util.Util;
 
 @AllArgsConstructor
@@ -39,33 +39,34 @@ public class ClusterManager {
         ArrayList<ActorSystem> actorSystems = new ArrayList<>();
         List<ActorRef> actorsRefs = new ArrayList<>();
 
-        File a = new File(Conf.LOG_FOLDER + "/");
+        //read configuration without resolving
+        Config initial = ConfigFactory.parseResourcesAnySyntax("server_configuration");
+        
+        //get only Raft properties
+        ServerConfImpl conf = new ServerConfImpl(initial);
+        conf.printConfiguration();
+        
+        //create new log folder
+        File a = new File(conf.LOG_FOLDER);
         if (a.exists()) {
-            Util.deleteFolderRecursively(Conf.LOG_FOLDER + "/");
+            Util.deleteFolderRecursively(conf.LOG_FOLDER);
         }
 
-        Config initial = ConfigFactory.load("application");
+        //for each server resolve config with its id and ip/port
+        for (int i = 0; i < conf.SERVER_NUMBER; i++) {
+            Config singleNode = ConfigFactory.parseString("servers.ID = " + i + "\n"
+                    + "servers.MY_IP = " + conf.NODES_IPS[i] + "\n"
+                    + "servers.MY_PORT = " + conf.NODES_PORTS[i]);
+            Config total = singleNode.withFallback(initial).resolve();           
 
-        for (int i = 0; i < Conf.SERVER_NUMBER; i++) {
-            String c = "akka.persistence.journal.leveldb.dir=\"" + Conf.LOG_FOLDER + "/" + i + "/journal\" \n" +
-                    "akka.persistence.snapshot-store.local.dir=\"" + Conf.LOG_FOLDER + "/" + i + "/snapshots\" \n" +
-                    "akka.remote.netty.tcp.hostname=\"" + Conf.NODES_IPS[i] + "\"\n" +
-                    "akka.remote.netty.tcp.port=" + Conf.NODES_PORTS[i] + "\n";
+            //create folders for journal and snapshots
+            ServerConfImpl.getJournalFolder(total).mkdirs();
+            ServerConfImpl.getSnapshotFolder(total).mkdirs();
 
-            Config next = ConfigFactory.parseString(c);
-
-            Config total = next.withFallback(initial);
-
-            File f = new File(Conf.LOG_FOLDER + "/" + i + "/journal/");
-            File g = new File(Conf.LOG_FOLDER + "/" + i + "/snapshots/");
-            f.mkdirs();
-            g.mkdirs();
-
-            ActorSystem system = ActorSystem.create(Conf.CLUSTER_NAME, total);
-
+            ActorSystem system = ActorSystem.create(conf.CLUSTER_NAME, total);
 
             actorSystems.add(system);
-            ActorRef actorRef = system.actorOf(Props.create(RaftServer.class, i), "node_" + i);
+            ActorRef actorRef = system.actorOf(Props.create(RaftServer.class, i), conf.PREFIX_NODE_NAME + i);
             actors.put(i, actorRef);
             actorsRefs.add(actorRef);
         }

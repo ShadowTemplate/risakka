@@ -8,7 +8,8 @@ import lombok.Setter;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.miscellanea.PersistentState;
 import risakka.raft.log.LogEntry;
-import risakka.util.Conf;
+import risakka.util.conf.server.ServerConf;
+import risakka.util.conf.server.ServerConfImpl;
 
 @Getter
 @Setter
@@ -17,9 +18,11 @@ public class FooNode extends UntypedPersistentActor {
 
     private PersistentState state;
     private int myId;
+    private final ServerConfImpl serverConf;
 
     public FooNode(int myId) {
         this.myId = myId;
+        serverConf = ServerConf.SettingsProvider.get(getContext().system());
         System.out.println("[Foo NODE !! Node " + myId + "]Called constructor: " + getSelf().path().name());
     }
 
@@ -47,11 +50,11 @@ public class FooNode extends UntypedPersistentActor {
 
         System.out.println("Called preStart: " + getSelf().path().name());
 
-        for (int i = 0; i < Conf.NODES_PORTS.length; i++) {
+        for (int i = 0; i < serverConf.NODES_PORTS.length; i++) {
 
             if (myId != i) {
-                String address = "akka.tcp://" + Conf.CLUSTER_NAME + "@" + Conf.NODES_IPS[i] + ":" +
-                        Conf.NODES_PORTS[i] + "/user/node";
+                String address = "akka.tcp://" + serverConf.CLUSTER_NAME + "@" + serverConf.NODES_IPS[i] + ":" +
+                        serverConf.NODES_PORTS[i] + "/user/node";
                 System.out.println("Sending message to: " + address);
                 getContext().actorSelection(address).tell("Hi I'm " + myId, getSelf());
             }
