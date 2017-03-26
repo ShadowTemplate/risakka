@@ -1,7 +1,7 @@
 package risakka.util;
 
-
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
@@ -30,20 +30,23 @@ public class Util {
         });
     }
 
-    /*
-    public static Router buildBroadcastRouter(ActorRef actor, Collection<ActorRef> actors) {
-        Map<ActorPath, Routee> routeeList = actors.parallelStream().collect(toMap(ActorRef::path, ActorRefRoutee::new));
-        routeeList.remove(actor.path());
-        return new Router(new BroadcastRoutingLogic(), routeeList.values());
-    }
-
-    public static List<ActorRef> buildActorsRefs(UntypedActorContext context, String[] nodesIPs, String[] nodesPorts) {
-        List<ActorRef> actorsRefs = new ArrayList<>();
-        for (int i = 0; i < nodesIPs.length; i++) {
-            actorsRefs.add(buildActorRef(context, nodesIPs[i], nodesPorts[i]));
+    public static void printFields(Field[] fields, Object object) {
+        try {
+            for (Field field : fields) {
+                if (field.getType().isArray()) {
+                    Object[] values = (Object[]) field.get(object);
+                    System.out.print("* " + field.getName() + ": [");
+                    for (int i = 0; i < values.length - 1; i++) {
+                        System.out.print(values[i] + ", ");
+                    }
+                    System.out.println(values[values.length - 1] + "]");
+                } else {
+                    System.out.println("* " + field.getName() + ": " + field.get(object));
+                }
+            }
+        } catch (IllegalAccessException ex) {
+            System.err.println("Error while displaying properties: " + ex.getMessage());
         }
-        return actorsRefs;
+        System.out.println();
     }
-    */
-
 }

@@ -3,6 +3,8 @@ package risakka.util.conf.server;
 
 import akka.actor.Extension;
 import com.typesafe.config.Config;
+import risakka.util.Util;
+
 import java.io.File;
 import java.lang.reflect.Field;
 
@@ -56,25 +58,8 @@ public class ServerConfImpl implements Extension {
     }
     
     public void printConfiguration() {
-        System.out.println("Cluster configuration:");
-        try {
-            for (Field field : ServerConfImpl.class.getFields()) {
-                if (field.getType().isArray()) {
-                    Object[] values = (Object[]) field.get(this);
-                    System.out.print("* " + field.getName() + ": [");
-                    for (int i = 0; i < values.length - 1; i++) {
-                        System.out.print(values[i] + ", ");
-                    }
-                    System.out.println(values[values.length - 1] + "]");
-                } else {
-                    System.out.println("* " + field.getName() + ": " + field.get(this));
-                }
-            }
-        } catch (IllegalAccessException ex) {
-            System.err.println("Error while displaying properties: " + ex.getMessage());
-        }
-        System.out.println();
+        System.out.println("Server configuration:");
+        Util.printFields(ServerConfImpl.class.getFields(), this);
     }
-
 }
 
