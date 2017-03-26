@@ -11,6 +11,8 @@ import java.io.Serializable;
 @AllArgsConstructor
 @ToString
 public class StateMachineCommand implements Serializable {
+
+    public static final String NOOP = "NO-OP";
     
     private String command; // could be change to something else
     private Integer clientId; //client that issued the request

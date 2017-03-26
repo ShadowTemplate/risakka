@@ -74,7 +74,6 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void preStart() throws Exception {
-
         toFollowerState();
         Recovery.create();
     }
@@ -83,12 +82,12 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void onReceiveCommand(Object message) throws Throwable {
-        System.out.println(getSelf().path().name() + " has received command " + message.getClass().getSimpleName());
+        System.out.println("[" + getSelf().path().name() + "] Received command " + message.getClass().getSimpleName());
 
         if (persistentState.getActorsRefs() == null && eventNotifier == null // server not initialized
                 && message instanceof MessageToServer // not an Akka internal message (e.g. snapshot-related) I would still be able to process
                 && !(message instanceof ClusterConfigurationMessage)) { // not the message I was waiting to init myself
-            System.out.println(getSelf().path().name() + " can't process message because it is still uninitialized");
+            System.out.println("[" + getSelf().path().name() + "] can't process message because it is still uninitialized");
             unhandled(message);
             return;
         }
@@ -100,12 +99,12 @@ public class RaftServer extends UntypedPersistentActor {
                 eventNotifier.addMessage(id, "[IN] " + message.getClass().getSimpleName());
             }
         } else if (message instanceof SaveSnapshotFailure) {
-            System.out.println("Error while performing the snapshot. " + message);
+            System.out.println("[" + getSelf().path().name() + "] Error while performing the snapshot. " + message);
             if (eventNotifier != null) {
                 eventNotifier.addMessage(id, "[IN] " + message.getClass().getSimpleName() + "\nCause: " + ((SaveSnapshotFailure) message).cause());
             }
         } else {
-            System.out.println("Unknown message type: " + message.getClass());
+            System.out.println("[" + getSelf().path().name() + "] Unknown message type: " + message.getClass());
             if (eventNotifier != null) {
                 eventNotifier.addMessage(id, "[IN] Unknown message type: " + message.getClass().getSimpleName());
             }
@@ -113,43 +112,43 @@ public class RaftServer extends UntypedPersistentActor {
         }
     }
 
-
     @Override
     public void onReceiveRecover(Object message) throws Throwable {
-        System.out.println(getSelf().path().name() + " has received recover " + message.getClass().getSimpleName());
+        System.out.println("[" + getSelf().path().name() + "] Received recover " + message.getClass().getSimpleName());
         if (message instanceof SnapshotOffer) { // called when server recovers from durable storage
             persistentState = buildFromSnapshotOffer((SnapshotOffer) message);
             System.out.println(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
         } else if (message instanceof RecoveryCompleted) {
-            System.out.println("Recovery completed");
-            System.out.println(persistentState.toString());
+            System.out.println("[" + getSelf().path().name() + "] Recovery completed: " + persistentState.toString());
             //actor can do something else before processing any other message
         } else {
-            System.out.println(getSelf().path().name() + " is unable to process "
+            System.out.println("[" + getSelf().path().name() + "] Unable to process "
                     + message.getClass().getSimpleName() + ". Forwarding to onReceiveCommand()...");
             onReceiveCommand(message);
         }
     }
 
     public void toFollowerState() {
+        System.out.println("[" + getSelf().path().name() + "] toFollowerState");
         state = ServerState.FOLLOWER;
         if (eventNotifier != null) {
             eventNotifier.updateState(id, state);
         }
-        System.out.println(getSelf().path().name() + ": toFollowerState called");
         cancelSchedule(heartbeatSchedule); // Required when state changed from LEADER to FOLLOWER
         scheduleElection();
     }
 
     public void toCandidateState() {
+        System.out.println("[" + getSelf().path().name() + "] toCandidateState");
         state = ServerState.CANDIDATE; // c
         if (eventNotifier != null) {
             eventNotifier.updateState(id, state);
         }
-        onConversionToCandidate(); // e
+        beginElection(); // e, d
     }
 
     public void toLeaderState() {
+        System.out.println("[" + getSelf().path().name() + "] toLeaderState");
         state = ServerState.LEADER;
         if (eventNotifier != null) {
             eventNotifier.updateState(id, state);
@@ -163,7 +162,7 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     private void sendNoOp() {
-        StateMachineCommand nop = new StateMachineCommand("NO-OP", getSelf());
+        StateMachineCommand nop = new StateMachineCommand(StateMachineCommand.NOOP, getSelf());
         addEntryToLogAndSendToFollowers(nop);
     }
 
@@ -182,6 +181,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
         int electionTimeout = Util.getRandomElectionTimeout(serverConf.HEARTBEAT_FREQUENCY); // p
         System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
+        System.out.println("[" + getSelf().path().name() + "] New election timeout: " + electionTimeout);
         electionSchedule = getContext().system().scheduler().scheduleOnce(
                 Duration.create(electionTimeout, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
                 getContext().system().dispatcher(), getSelf());
@@ -193,11 +193,8 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
         }
     }
 
-    private void onConversionToCandidate() {  // e
-        beginElection(); // d
-    }
-
     public void beginElection() { // d
+        System.out.println("[" + getSelf().path().name() + "] Starting election");
         votersIds.clear();
         persistentState.updateCurrentTerm(this, persistentState.getCurrentTerm() + 1, () -> { // b
             if (eventNotifier != null) {
@@ -207,8 +204,6 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
             getPersistentState().updateVotedFor(this, getSelf(), () -> {
                 votersIds.add(getSelf().path().toSerializationFormat()); // f
                 scheduleElection(); // g
-                System.out.println(getSelf().path().name() + " will broadcast RequestVoteRequest");
-
                 int lastLogIndex = persistentState.getLog().size();
                 int lastLogTerm = getLastLogTerm(lastLogIndex);
                 sendBroadcastRequest(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm));
@@ -217,6 +212,8 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
     }
 
     private void sendBroadcastRequest(MessageToServer message) {
+        System.out.println("[" + getSelf().path().name() + "] [OUT Broadcast] " + message.getClass().getSimpleName());
+        eventNotifier.addMessage(id, "[OUT Broadcast] " + message.getClass().getSimpleName());
         persistentState.getActorsRefs().stream().filter(actorRef -> !actorRef.equals(getSelf())).forEach(actorRef -> {
             actorRef.tell(message, getSelf());
         });
@@ -250,6 +247,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
         LogEntry entry = new LogEntry(persistentState.getCurrentTerm(), command);
         int lastIndex = persistentState.getLog().size();
         persistentState.updateLog(this, lastIndex + 1, entry, () -> {
+            System.out.println("[" + getSelf().path().name() + "] Updated log: [" + lastIndex + 1 + "] " + entry);
             eventNotifier.updateLog(id, lastIndex + 1, entry);
             sendAppendEntriesToAllFollowers(); //w
         });
@@ -278,16 +276,21 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
                 //previous entry w.r.t. the new ones that has to match in order to accept the new ones
                 LogEntry prevEntry = server.getPersistentState().getLog().get(nextIndex[followerId] - 1);
                 Integer prevLogTerm = prevEntry.getTermNumber();
-
-                actor.tell(new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), nextIndex[followerId] - 1, prevLogTerm, entries, server.getCommitIndex()), getSelf());
+                AppendEntriesRequest appendEntriesRequest = new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), nextIndex[followerId] - 1, prevLogTerm, entries, server.getCommitIndex());
+                System.out.println("[" + getSelf().path().name() + "] [OUT] AppendEntriesRequest " + appendEntriesRequest);
+                eventNotifier.addMessage(id, "[OUT] AppendEntriesRequest " + appendEntriesRequest);
+                actor.tell(appendEntriesRequest, getSelf());
             } else { //first entry - previous entry fields are null
-                actor.tell(new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), null, null, entries, server.getCommitIndex()), getSelf());
+                AppendEntriesRequest appendEntriesRequest = new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), null, null, entries, server.getCommitIndex());
+                System.out.println("[" + getSelf().path().name() + "] [OUT] AppendEntriesRequest " + appendEntriesRequest);
+                eventNotifier.addMessage(id, "[OUT] AppendEntriesRequest " + appendEntriesRequest);
+                actor.tell(appendEntriesRequest, getSelf());
             }
         }
     }
 
     public void checkEntriesToCommit() { // z //call iff leader
-        System.out.println("Checking if some entries can be committed");
+        System.out.println("[" + getSelf().path().name() + "] Checking if some entries can be committed");
         int oldCommitIndex = commitIndex;
         for (int i = persistentState.getLog().size(); i > commitIndex; i--) {
             int count = 1; // on how many server the entry is replicated (myself for sure)
@@ -313,20 +316,24 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
     }
     
     private void executeCommand(int logIndex, Boolean leader) {
-        
         StateMachineCommand command = persistentState.getLog().get(logIndex).getCommand();
 
-        if (command.getCommand().equals("NOP")) {
-            System.out.println("[DEBUG- TEST] Received a NOP. Operation not executed");
+        if (command.getCommand().equals(StateMachineCommand.NOOP)) {
+            System.out.println("[" + getSelf().path().name() + "] Received a NO-OP: operation not executed");
             return;
         }
 
         //registration command of new client - new client session
         if (command.getCommand().equals(RegisterClientRequest.REGISTER)) {
-            System.out.println("Registering client " + command.getClientAddress());
+            System.out.println("[" + getSelf().path().name() + "] Registering client " + command.getClientAddress());
+            eventNotifier.addMessage(id, "Registering client " + command.getClientAddress());
             clientSessionMap.put(logIndex, -1); //allocate new session
             if (leader) { //answer back to the client
-                command.getClientAddress().tell(new RegisterClientResponse(Status.OK, logIndex, null), getSelf());
+                RegisterClientResponse registerClientResponse = new RegisterClientResponse(Status.OK, logIndex, null);
+                System.out.println("[" + getSelf().path().name() + "] [OUT] " + RegisterClientResponse.class.getSimpleName()
+                        + " " + registerClientResponse);
+                eventNotifier.addMessage(id, "[OUT] " + RegisterClientResponse.class.getSimpleName() + " " + registerClientResponse);
+                command.getClientAddress().tell(registerClientResponse, getSelf());
             }
             //TODO update lastApplied
             return;
@@ -357,25 +364,38 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
 
             //update last request of the client
             clientSessionMap.put(command.getClientId(), Math.max(command.getSeqNumber(), lastSeqNumber));
-            System.out.println(getSelf().path().name() + " is committing request: " + command.getCommand() + " of client " + command.getClientId() + " and seqNumber: " + clientSessionMap.get(command.getClientId()));
+            System.out.println("[" + getSelf().path().name() + "] Committing request: " + command.getCommand() +
+                    " of client " + command.getClientId() + " and seqNumber: " + clientSessionMap.get(command.getClientId()));
+            eventNotifier.addMessage(id, "Committing request: " + command.getCommand() +
+                    " of client " + command.getClientId() + " and seqNumber: " + clientSessionMap.get(command.getClientId()));
             
             if (leader) { //answer back to the client
-                command.getClientAddress().tell(new ServerResponse(Status.OK, result, null), getSelf());
+                ServerResponse serverResponse = new ServerResponse(Status.OK, result, null);
+                System.out.println("[" + getSelf().path().name() + "] [OUT] " + ServerResponse.class.getSimpleName()
+                        + serverResponse);
+                eventNotifier.addMessage(id, "[OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
+                command.getClientAddress().tell(serverResponse, getSelf());
             }
             //TODO update lastApplied
             return;
         } 
 
         //client session is expired, command should not be executed
-        System.out.println("Client session of " + command.getClientId() + " is expired");
+        System.out.println("[" + getSelf().path().name() + "] Client session of " + command.getClientId() + " is expired");
+        eventNotifier.addMessage(id, "Client session of " + command.getClientId() + " is expired");
         if (leader) {
-            command.getClientAddress().tell(new ServerResponse(Status.SESSION_EXPIRED, null, null), getSelf());
+            ServerResponse serverResponse = new ServerResponse(Status.SESSION_EXPIRED, null, null);
+            System.out.println("[" + getSelf().path().name() + "] [OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
+            eventNotifier.addMessage(id, "[OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
+            command.getClientAddress().tell(serverResponse, getSelf());
         }
         //TODO update lastApplied?
     }
     
     private String applyToStateMachine(int index) {
         String result = "(log " + index + ") " + Long.toHexString(Double.doubleToLongBits(Math.random()));
+        System.out.println("[" + getSelf().path().name() + "] Applying to state machine. [" + index + "] " + result);
+        eventNotifier.addMessage(id, "Applying to state machine. [" + index + "] " + result);
         persistentState.getLog().get(index).getCommand().setResult(result);
         return result;
     }

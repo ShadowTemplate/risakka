@@ -13,16 +13,16 @@ public class RequestVoteResponse extends ServerRPC implements MessageToServer {
 
     @Override
     public void onReceivedBy(RaftServer server) {
-        System.out.println("\n" + server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteResponse from " + server.getSender().path().name() + "\n");
+        System.out.println("[" + server.getSelf().path().name() + "] [IN] " + RequestVoteResponse.class.getSimpleName() + " in state " + server.getState() + " has received RequestVoteResponse from " + server.getSender().path().name() + "\n");
         server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() +
                 " [" + server.getSender().path().name() + "]\nTerm: " + term + ", voteGranted: " + voteGranted);
 
         onProcedureCall(server, term); // A
 
-        if(server.getState() != ServerState.CANDIDATE) { //e.g. became follower due to A
+        if (server.getState() != ServerState.CANDIDATE) { //e.g. became follower due to A
             return;
         }
-        
+
         if (term.equals(server.getPersistentState().getCurrentTerm()) && voteGranted) { // l
             System.out.println(server.getSelf().path().name() + " has received vote from " +
                     server.getSender().path().name());

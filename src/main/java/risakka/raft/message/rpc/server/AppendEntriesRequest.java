@@ -1,6 +1,7 @@
 package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
+import lombok.ToString;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
 import risakka.raft.message.MessageToServer;
@@ -9,6 +10,7 @@ import risakka.raft.miscellanea.ServerState;
 import java.util.List;
 
 @AllArgsConstructor
+@ToString
 public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 
     private final Integer term;
