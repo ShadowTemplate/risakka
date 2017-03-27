@@ -9,8 +9,11 @@ import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import risakka.gui.EventNotifier;
+
 
 @ToString
 @Getter
@@ -22,7 +25,7 @@ public class PersistentState implements Serializable {
     private Integer currentTerm = 0; // a
     private ActorRef votedFor = null;
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
-    private Collection<ActorRef> actorsRefs = null;
+    private List<ActorRef> actorsRefs = null;
 
     public void updateCurrentTerm(RaftServer raftServer, Integer currentTerm, Runnable onSuccess) {
         this.currentTerm = currentTerm;
@@ -37,6 +40,7 @@ public class PersistentState implements Serializable {
         raftServer.persist(this, ignored -> {
             onSuccess.run();
         });
+
     }
 
     public void updateLog(RaftServer raftServer, int i, LogEntry item, Runnable onSuccess) {
@@ -44,6 +48,7 @@ public class PersistentState implements Serializable {
         raftServer.persist(this, ignored -> {
             onSuccess.run();
         });
+
     }
 
     public void updateLog(RaftServer raftServer, int startIndex, List<LogEntry> entries, Runnable onSuccess) {
@@ -54,15 +59,16 @@ public class PersistentState implements Serializable {
                 log.deleteFrom(currIndex);
             }
             log.set(currIndex, entry);
-            raftServer.getEventNotifier().updateLog(raftServer.getId(), currIndex, entry);
+            EventNotifier.getInstance().updateLog(raftServer.getId(), currIndex, entry);
             currIndex++;
         }
         raftServer.persist(this, ignored -> {
             onSuccess.run();
         });
+
     }
 
-    public void updateActorRefs(RaftServer raftServer, Collection<ActorRef> actorsRefs,
+    public void updateActorRefs(RaftServer raftServer, List<ActorRef> actorsRefs,
                                 Runnable onSuccess) {
         this.actorsRefs = actorsRefs;
         raftServer.persist(this, ignored -> {

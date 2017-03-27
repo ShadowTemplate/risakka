@@ -13,10 +13,7 @@ import risakka.raft.message.akka.ClusterConfigurationMessage;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import risakka.raft.actor.RaftServer;
 import risakka.util.conf.server.ServerConfImpl;
@@ -38,6 +35,7 @@ public class ClusterManager {
         Map<Integer, ActorRef> actors = new HashMap<>();
         ArrayList<ActorSystem> actorSystems = new ArrayList<>();
         List<ActorRef> actorsRefs = new ArrayList<>();
+
 
         //read configuration without resolving
         Config initial = ConfigFactory.parseResourcesAnySyntax("server_configuration");
@@ -73,13 +71,25 @@ public class ClusterManager {
 
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors);
         ClusterManagerGUI risakkaGUI = new ClusterManagerGUI(clusterManager);
-        EventNotifier eventNotifier = new EventNotifier(risakkaGUI);
+        EventNotifier.setInstance(risakkaGUI);
         risakkaGUI.run();
 
 
         for (ActorRef actor : actorsRefs) {
-            actor.tell(new ClusterConfigurationMessage(actorsRefs, eventNotifier), actor);
+            actor.tell(new ClusterConfigurationMessage(actorsRefs), actor);
         }
     }
 
+    public List<ActorRef> getMapValues() {
+        List<ActorRef> l = new ArrayList<>();
+
+
+        for (ActorRef actor : actors.values()
+                ) {
+            l.add(actor);
+        }
+
+        return l;
+
+    }
 }

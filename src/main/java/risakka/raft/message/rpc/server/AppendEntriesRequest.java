@@ -8,6 +8,7 @@ import risakka.raft.message.MessageToServer;
 import risakka.raft.miscellanea.ServerState;
 
 import java.util.List;
+import risakka.gui.EventNotifier;
 
 @AllArgsConstructor
 @ToString
@@ -24,11 +25,11 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
     public void onReceivedBy(RaftServer server) {
 //        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
         if (entries.isEmpty()) {
-            server.getEventNotifier().addMessage(server.getId(), "[IN] Heartbeat ["
+            EventNotifier.getInstance().addMessage(server.getId(), "[IN] Heartbeat ["
                     + server.getSender().path().name() + "]\nTerm: " + term + ", prevLogTerm: " + prevLogTerm
                     + ", prevLogIndex: " + prevLogIndex + ", leaderCommit: " + leaderCommit);
         } else {
-            server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " ["
+            EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " ["
                     + server.getSender().path().name() + "]\nTerm: " + term + ", prevLogTerm: " + prevLogTerm
                     + ", prevLogIndex: " + prevLogIndex + ", leaderCommit: " + leaderCommit + ", entries:\n" + entries);
         }

@@ -1,6 +1,7 @@
 package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
+import risakka.gui.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
 import risakka.raft.miscellanea.ServerState;
@@ -18,9 +19,9 @@ public class AppendEntriesResponse extends ServerRPC implements MessageToServer 
     public void onReceivedBy(RaftServer server) {
 //        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse with success: " + success);
         if (lastEntryIndex == null) { // heartbeat
-            server.getEventNotifier().addMessage(server.getId(), "[IN] Heartbeat ACK [" + server.getSender().path().name() + "]");
+            EventNotifier.getInstance().addMessage(server.getId(), "[IN] Heartbeat ACK [" + server.getSender().path().name() + "]");
         } else { // request succeeded or failed
-            server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " ["
+            EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " ["
                     + server.getSender().path().name() + "]\nTerm: " + term + ", success: " + success + ", lastEntryIndex: "
                     + lastEntryIndex);
         }

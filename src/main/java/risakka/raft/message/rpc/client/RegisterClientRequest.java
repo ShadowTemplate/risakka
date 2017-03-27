@@ -1,5 +1,6 @@
 package risakka.raft.message.rpc.client;
 
+import risakka.gui.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToServer;
@@ -11,7 +12,7 @@ public class RegisterClientRequest implements MessageToServer {
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println("Server " + server.getSelf().path().name() + " in state " + server.getState() + " has received RegisterClientRequest");
-        server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " [" + server.getSender().path().name() + "]");
+        EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " [" + server.getSender().path().name() + "]");
       
         switch (server.getState()) {
             case LEADER:
