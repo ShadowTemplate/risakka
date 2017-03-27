@@ -4,10 +4,10 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.actor.Terminated;
+import com.typesafe.config.Config;
 import lombok.Getter;
 import risakka.cluster.ClusterManager;
 import risakka.raft.actor.RaftServer;
-import risakka.raft.message.akka.ClusterConfigurationMessage;
 import scala.concurrent.Future;
 
 import javax.swing.*;
@@ -67,8 +67,8 @@ public class ClusterManagerGUI implements Runnable {
         scrollablePane.getVerticalScrollBar().setUnitIncrement(16);
         setComponentSize(scrollablePane, getScrollablePaneDimension(nodesNumber));
 
-        for (Map.Entry<Integer, ActorRef> actorEntry : clusterManager.getActors().entrySet()) {
-            ServerPanel serverPanel = new ServerPanel(actorEntry.getKey(), actorEntry.getValue().path().toSerializationFormat());
+        for (Map.Entry<Integer, String> actorEntry : clusterManager.getActors().entrySet()) {
+            ServerPanel serverPanel = new ServerPanel(actorEntry.getKey(), actorEntry.getValue());
             setActiveSwitchListener(serverPanel, actorEntry.getKey());
             setElectionTimeoutSwitchListener(serverPanel, actorEntry.getKey());
             serverPanels.put(actorEntry.getKey(), serverPanel);
@@ -86,17 +86,17 @@ public class ClusterManagerGUI implements Runnable {
                 System.out.println("Killing node with id " + nodeId);
                 activeSwitch.setText("INACTIVE");
                 // TODO CHECK KILL
-                clusterManager.getActorSystems().get(nodeId).stop(clusterManager.getActors().get(nodeId));
+                clusterManager.getActorSystems().get(nodeId).terminate();
             } else if (ev.getStateChange() == ItemEvent.DESELECTED) {
                 //TODO CHECK RE-INIT HERE
                 System.out.println("Reading node with id " + nodeId);
                 activeSwitch.setText("ACTIVE");
-                ActorRef newActor = clusterManager.getActorSystems().get(nodeId).actorOf(Props.create(RaftServer.class, nodeId), "node_" + nodeId);
-                clusterManager.getActors().put(nodeId, newActor);
-
-                for (ActorRef actorRef : clusterManager.getActors().values()) {
-                    actorRef.tell(new ClusterConfigurationMessage(clusterManager.getMapValues()), actorRef);
-                }
+                
+                //recreate the system with the raft server (its address is the same)
+                Config total = ClusterManager.resolveConfigurationForId(nodeId, clusterManager.getInitialConfig(), clusterManager.getNotResolvedConf());
+                ActorSystem system = ActorSystem.create(clusterManager.getNotResolvedConf().CLUSTER_NAME, total);
+                system.actorOf(Props.create(RaftServer.class, nodeId), clusterManager.getNotResolvedConf().PREFIX_NODE_NAME + nodeId);
+                clusterManager.getActorSystems().set(nodeId, system);
             }
         });
     }

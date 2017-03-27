@@ -13,6 +13,10 @@ public class Util {
         return heartbeatFrequency * 4 + (new Random().nextInt(heartbeatFrequency * 2));
         // TODO check the math. Election timeouts should be chosen randomly from a fixed interval (150-300 ms)
     }
+    
+    public static String getAddressFromId(int id, String clusterName, String ip, String port, String prefixNode) {
+        return "akka.tcp://" + clusterName + "@" + ip + ":" + port + "/user/" + prefixNode + id;
+    }
 
     public static void deleteFolderRecursively(String folderPath) throws IOException {
         Files.walkFileTree(Paths.get(folderPath), new SimpleFileVisitor<Path>() {

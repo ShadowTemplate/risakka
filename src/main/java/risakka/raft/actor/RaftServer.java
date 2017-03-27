@@ -69,7 +69,7 @@ public class RaftServer extends UntypedPersistentActor {
         this.leaderId = null;
         this.id = id;
     }
-
+    
     @Override
     public void preStart() throws Exception {
         toFollowerState();
@@ -82,7 +82,7 @@ public class RaftServer extends UntypedPersistentActor {
     public void onReceiveCommand(Object message) throws Throwable {
         System.out.println("[" + getSelf().path().name() + "] Received command " + message.getClass().getSimpleName());
 
-        if (persistentState.getActorsRefs() == null && EventNotifier.getInstance() == null // server not initialized
+        if (persistentState.getActorAddresses() == null && EventNotifier.getInstance() == null // server not initialized
                 && message instanceof MessageToServer // not an Akka internal message (e.g. snapshot-related) I would still be able to process
                 && !(message instanceof ClusterConfigurationMessage)) { // not the message I was waiting to init myself
             System.out.println("[" + getSelf().path().name() + "] can't process message because it is still uninitialized");
@@ -215,8 +215,8 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
     private void sendBroadcastRequest(MessageToServer message) {
         System.out.println("[" + getSelf().path().name() + "] [OUT Broadcast] " + message.getClass().getSimpleName());
         EventNotifier.getInstance().addMessage(id, "[OUT Broadcast] " + message.getClass().getSimpleName());
-        persistentState.getActorsRefs().stream().filter(actorRef -> !actorRef.equals(getSelf())).forEach(actorRef -> {
-            actorRef.tell(message, getSelf());
+        persistentState.getActorAddresses().stream().filter(actorAddress -> !getContext().actorSelection(actorAddress).anchor().equals(getSelf())).forEach(actorAddress -> {
+            getContext().actorSelection(actorAddress).tell(message, getSelf());
         });
     }
 
@@ -240,8 +240,8 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
     }
 
     private ActorSelection buildAddressFromId(int id) {
-        return getContext().actorSelection("akka.tcp://" + serverConf.CLUSTER_NAME + "@" + serverConf.NODES_IPS[id] + ":"
-                + serverConf.NODES_PORTS[id] + "/user/" + serverConf.PREFIX_NODE_NAME + id);
+        String address = Util.getAddressFromId(id, serverConf.CLUSTER_NAME, serverConf.NODES_IPS[id], serverConf.NODES_PORTS[id], serverConf.PREFIX_NODE_NAME);
+        return getContext().actorSelection(address);
     }
 
     public void addEntryToLogAndSendToFollowers(StateMachineCommand command) { //u

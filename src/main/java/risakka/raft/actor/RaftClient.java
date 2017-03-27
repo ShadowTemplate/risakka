@@ -28,6 +28,7 @@ import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToClient;
 import risakka.raft.message.rpc.client.ClientRequest;
 import risakka.raft.message.rpc.client.RegisterClientRequest;
+import risakka.util.Util;
 import risakka.util.conf.client.ClientConf;
 import risakka.util.conf.client.ClientConfImpl;
 
@@ -104,8 +105,8 @@ public class RaftClient extends UntypedActor {
     }
 
     public ActorSelection buildAddressFromId(int id) {
-        return getContext().actorSelection("akka.tcp://" + clientConf.SERVER_CLUSTER_NAME + "@" + clientConf.NODES_IPS[id] + ":"
-                + clientConf.NODES_PORTS[id] + "/user/" + clientConf.SERVER_PREFIX_NODE_NAME + id);
+        String address = Util.getAddressFromId(id, clientConf.SERVER_CLUSTER_NAME, clientConf.NODES_IPS[id], clientConf.NODES_PORTS[id], clientConf.SERVER_PREFIX_NODE_NAME);
+        return getContext().actorSelection(address);
     }
     
     public void registerContactingRandomServer() {

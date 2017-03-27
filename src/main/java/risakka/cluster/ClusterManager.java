@@ -1,6 +1,6 @@
 package risakka.cluster;
 
-import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import com.typesafe.config.Config;
@@ -24,7 +24,9 @@ import risakka.util.Util;
 public class ClusterManager {
 
     private final ArrayList<ActorSystem> actorSystems;
-    private final Map<Integer, ActorRef> actors;
+    private final Map<Integer, String> actors;
+    private final Config initialConfig;
+    private final ServerConfImpl notResolvedConf;
 
 
     public static void main(String[] args) throws IOException {
@@ -32,9 +34,9 @@ public class ClusterManager {
         // Initializing every Actor with a different actor system, so that avery one has a different
         // IP:port combination and folder where to save its snapshots
 
-        Map<Integer, ActorRef> actors = new HashMap<>();
+        Map<Integer, String> actors = new HashMap<>();
         ArrayList<ActorSystem> actorSystems = new ArrayList<>();
-        List<ActorRef> actorsRefs = new ArrayList<>();
+        List<String> actorAddressesList = new ArrayList<>();
 
 
         //read configuration without resolving
@@ -52,44 +54,38 @@ public class ClusterManager {
 
         //for each server resolve config with its id and ip/port
         for (int i = 0; i < conf.SERVER_NUMBER; i++) {
-            Config singleNode = ConfigFactory.parseString("servers.ID = " + i + "\n"
-                    + "servers.MY_IP = " + conf.NODES_IPS[i] + "\n"
-                    + "servers.MY_PORT = " + conf.NODES_PORTS[i]);
-            Config total = singleNode.withFallback(initial).resolve();           
+            Config total = resolveConfigurationForId(i, initial, conf);
 
             //create folders for journal and snapshots
             ServerConfImpl.getJournalFolder(total).mkdirs();
             ServerConfImpl.getSnapshotFolder(total).mkdirs();
 
+            //create system, launch actor (the raft server) and store its address
             ActorSystem system = ActorSystem.create(conf.CLUSTER_NAME, total);
-
+            system.actorOf(Props.create(RaftServer.class, i), conf.PREFIX_NODE_NAME + i);
+            String address = Util.getAddressFromId(i, conf.CLUSTER_NAME, conf.NODES_IPS[i], conf.NODES_PORTS[i], conf.PREFIX_NODE_NAME);
+            
             actorSystems.add(system);
-            ActorRef actorRef = system.actorOf(Props.create(RaftServer.class, i), conf.PREFIX_NODE_NAME + i);
-            actors.put(i, actorRef);
-            actorsRefs.add(actorRef);
+            actors.put(i, address);
+            actorAddressesList.add(address);
         }
 
-        ClusterManager clusterManager = new ClusterManager(actorSystems, actors);
+        ClusterManager clusterManager = new ClusterManager(actorSystems, actors, initial, conf);
         ClusterManagerGUI risakkaGUI = new ClusterManagerGUI(clusterManager);
         EventNotifier.setInstance(risakkaGUI);
         risakkaGUI.run();
 
-
-        for (ActorRef actor : actorsRefs) {
-            actor.tell(new ClusterConfigurationMessage(actorsRefs), actor);
+        for (int i = 0; i < actorAddressesList.size(); i++) {
+            ActorSelection sel = actorSystems.get(i).actorSelection(actorAddressesList.get(i));
+            sel.tell(new ClusterConfigurationMessage(actorAddressesList), sel.anchor());
         }
     }
-
-    public List<ActorRef> getMapValues() {
-        List<ActorRef> l = new ArrayList<>();
-
-
-        for (ActorRef actor : actors.values()
-                ) {
-            l.add(actor);
-        }
-
-        return l;
-
+    
+    public static Config resolveConfigurationForId(int id, Config initial, ServerConfImpl notResolvedConf) {
+        Config singleNode = ConfigFactory.parseString("servers.ID = " + id + "\n"
+                + "servers.MY_IP = " + notResolvedConf.NODES_IPS[id] + "\n"
+                + "servers.MY_PORT = " + notResolvedConf.NODES_PORTS[id]);
+        return singleNode.withFallback(initial).resolve();
     }
+
 }

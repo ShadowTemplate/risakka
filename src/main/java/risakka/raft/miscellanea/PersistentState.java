@@ -23,7 +23,7 @@ public class PersistentState implements Serializable {
     private Integer currentTerm = 0; // a
     private ActorRef votedFor = null;
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
-    private List<ActorRef> actorsRefs = null;
+    private List<String> actorAddresses = null;
 
     public void updateCurrentTerm(RaftServer raftServer, Integer currentTerm, Runnable onSuccess) {
         this.currentTerm = currentTerm;
@@ -66,9 +66,9 @@ public class PersistentState implements Serializable {
 
     }
 
-    public void updateActorRefs(RaftServer raftServer, List<ActorRef> actorsRefs,
+    public void updateActorAddresses(RaftServer raftServer, List<String> actorAddresses,
                                 Runnable onSuccess) {
-        this.actorsRefs = actorsRefs;
+        this.actorAddresses = actorAddresses;
         raftServer.persist(this, ignored -> {
             onSuccess.run();
         });
