@@ -20,8 +20,7 @@ public class SendHeartbeatMessage implements MessageToServer {
     }
 
     private void sendHeartbeat(RaftServer server) {
-        server.getPersistentState().getActorAddresses().stream()
-                .filter(actorAddress -> !server.getContext().actorSelection(actorAddress).anchor().equals(server.getSelf()))
+        server.getActorAddresses().stream()
                 .forEach(actorAddress -> {
             AppendEntriesRequest message = new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(),
                     null, null, new ArrayList<>(), server.getCommitIndex());

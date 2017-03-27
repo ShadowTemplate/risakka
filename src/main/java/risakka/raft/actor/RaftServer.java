@@ -45,6 +45,7 @@ public class RaftServer extends UntypedPersistentActor {
     private Set<String> votersIds;
     private Integer leaderId; //last leader known
     private LRUSessionMap<Integer, Integer> clientSessionMap;
+    private List<String> actorAddresses;
 
     // Akka fields
 
@@ -58,16 +59,17 @@ public class RaftServer extends UntypedPersistentActor {
     public RaftServer(Integer id) {
         System.out.println("Creating RaftServer with id " + id);
         serverConf = ServerConf.SettingsProvider.get(getContext().system());
+        this.id = id;
         this.votersIds = new HashSet<>();
         this.clientSessionMap = new LRUSessionMap<>(serverConf.MAX_CLIENT_SESSIONS);
         this.persistentState = new PersistentState();
         this.nextIndex = new int[serverConf.SERVER_NUMBER];
         this.matchIndex = new int[serverConf.SERVER_NUMBER];
         this.initializeNextAndMatchIndex();
+        this.initializeActorAddresses();
         this.commitIndex = 0;
         this.lastApplied = 0;
         this.leaderId = null;
-        this.id = id;
     }
     
     @Override
@@ -82,9 +84,8 @@ public class RaftServer extends UntypedPersistentActor {
     public void onReceiveCommand(Object message) throws Throwable {
         System.out.println("[" + getSelf().path().name() + "] Received command " + message.getClass().getSimpleName());
 
-        if (persistentState.getActorAddresses() == null && EventNotifier.getInstance() == null // server not initialized
-                && message instanceof MessageToServer // not an Akka internal message (e.g. snapshot-related) I would still be able to process
-                && !(message instanceof ClusterConfigurationMessage)) { // not the message I was waiting to init myself
+        if (actorAddresses == null && EventNotifier.getInstance() == null // server not initialized
+                && message instanceof MessageToServer) { // not an Akka internal message (e.g. snapshot-related) I would still be able to process
             System.out.println("[" + getSelf().path().name() + "] can't process message because it is still uninitialized");
             unhandled(message);
             return;
@@ -215,7 +216,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
     private void sendBroadcastRequest(MessageToServer message) {
         System.out.println("[" + getSelf().path().name() + "] [OUT Broadcast] " + message.getClass().getSimpleName());
         EventNotifier.getInstance().addMessage(id, "[OUT Broadcast] " + message.getClass().getSimpleName());
-        persistentState.getActorAddresses().stream().filter(actorAddress -> !getContext().actorSelection(actorAddress).anchor().equals(getSelf())).forEach(actorAddress -> {
+        actorAddresses.stream().forEach(actorAddress -> {
             getContext().actorSelection(actorAddress).tell(message, getSelf());
         });
     }
@@ -410,6 +411,16 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
     public int getSenderServerId() {
         String serverName = getSender().path().name(); //e.g. node_0
         return Character.getNumericValue(serverName.charAt(serverName.length() - 1));
+    }
+    
+    private void initializeActorAddresses() {
+        actorAddresses = new LinkedList<>();
+        for (int i = 0; i < serverConf.SERVER_NUMBER; i++) {
+            if (i != id) {
+                String address = Util.getAddressFromId(i, serverConf.CLUSTER_NAME, serverConf.NODES_IPS[i], serverConf.NODES_PORTS[i], serverConf.PREFIX_NODE_NAME);
+                actorAddresses.add(address);
+            }
+        }
     }
 
     @Override

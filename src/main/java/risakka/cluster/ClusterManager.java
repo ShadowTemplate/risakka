@@ -1,6 +1,5 @@
 package risakka.cluster;
 
-import akka.actor.ActorSelection;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import com.typesafe.config.Config;
@@ -9,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import risakka.gui.ClusterManagerGUI;
 import risakka.gui.EventNotifier;
-import risakka.raft.message.akka.ClusterConfigurationMessage;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +34,6 @@ public class ClusterManager {
 
         Map<Integer, String> actors = new HashMap<>();
         ArrayList<ActorSystem> actorSystems = new ArrayList<>();
-        List<String> actorAddressesList = new ArrayList<>();
 
 
         //read configuration without resolving
@@ -67,7 +64,6 @@ public class ClusterManager {
             
             actorSystems.add(system);
             actors.put(i, address);
-            actorAddressesList.add(address);
         }
 
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors, initial, conf);
@@ -75,10 +71,6 @@ public class ClusterManager {
         EventNotifier.setInstance(risakkaGUI);
         risakkaGUI.run();
 
-        for (int i = 0; i < actorAddressesList.size(); i++) {
-            ActorSelection sel = actorSystems.get(i).actorSelection(actorAddressesList.get(i));
-            sel.tell(new ClusterConfigurationMessage(actorAddressesList), sel.anchor());
-        }
     }
     
     public static Config resolveConfigurationForId(int id, Config initial, ServerConfImpl notResolvedConf) {
