@@ -1,6 +1,7 @@
 package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
+import risakka.gui.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
 
@@ -15,7 +16,7 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
     @Override
     public void onReceivedBy(RaftServer server) {
         System.out.println("\n" + server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteRequest from " + server.getSender().path().name() + "\n");
-        server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " [" +
+        EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " [" +
                 server.getSender().path().name() + "]\nTerm: " + term + ", lastLogTerm: " + lastLogTerm + ", lastLogIndex: " + lastLogIndex);
 
         onProcedureCall(server, term); // A

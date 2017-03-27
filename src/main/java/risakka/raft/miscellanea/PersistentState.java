@@ -11,6 +11,7 @@ import risakka.raft.log.LogEntry;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
+import risakka.gui.EventNotifier;
 
 @ToString
 @Getter
@@ -54,7 +55,7 @@ public class PersistentState implements Serializable {
                 log.deleteFrom(currIndex);
             }
             log.set(currIndex, entry);
-            raftServer.getEventNotifier().updateLog(raftServer.getId(), currIndex, entry);
+            EventNotifier.getInstance().updateLog(raftServer.getId(), currIndex, entry);
             currIndex++;
         }
         raftServer.persist(this, ignored -> {

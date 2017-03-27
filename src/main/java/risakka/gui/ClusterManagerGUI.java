@@ -95,7 +95,7 @@ public class ClusterManagerGUI implements Runnable {
                 clusterManager.getActors().put(nodeId, newActor);
 
                 for (ActorRef actorRef : clusterManager.getActors().values()) {
-                    actorRef.tell(new ClusterConfigurationMessage(clusterManager.getActors().values(), new EventNotifier(this)), actorRef);
+                    actorRef.tell(new ClusterConfigurationMessage(clusterManager.getActors().values()), actorRef);
                 }
             }
         });

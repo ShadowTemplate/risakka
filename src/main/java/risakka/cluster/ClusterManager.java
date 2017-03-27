@@ -73,12 +73,12 @@ public class ClusterManager {
 
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors);
         ClusterManagerGUI risakkaGUI = new ClusterManagerGUI(clusterManager);
-        EventNotifier eventNotifier = new EventNotifier(risakkaGUI);
+        EventNotifier.setInstance(risakkaGUI);
         risakkaGUI.run();
 
 
         for (ActorRef actor : actorsRefs) {
-            actor.tell(new ClusterConfigurationMessage(actorsRefs, eventNotifier), actor);
+            actor.tell(new ClusterConfigurationMessage(actorsRefs), actor);
         }
     }
 

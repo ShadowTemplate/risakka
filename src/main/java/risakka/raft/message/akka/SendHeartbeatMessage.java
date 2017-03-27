@@ -6,6 +6,7 @@ import risakka.raft.message.MessageToServer;
 import risakka.raft.message.rpc.server.AppendEntriesRequest;
 
 import java.util.ArrayList;
+import risakka.gui.EventNotifier;
 
 @AllArgsConstructor
 public class SendHeartbeatMessage implements MessageToServer {
@@ -13,7 +14,7 @@ public class SendHeartbeatMessage implements MessageToServer {
     @Override
     public void onReceivedBy(RaftServer server) {
 //        System.out.println(server.getSelf().path().name() + " is going to send heartbeat as a LEADER...");
-        server.getEventNotifier().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName());
+        EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName());
 
         sendHeartbeat(server);
     }

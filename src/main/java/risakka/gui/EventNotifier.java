@@ -1,15 +1,29 @@
 package risakka.gui;
 
-import lombok.AllArgsConstructor;
 import risakka.raft.log.LogEntry;
 import risakka.raft.miscellanea.ServerState;
 
 import javax.swing.*;
 
-@AllArgsConstructor
 public class EventNotifier {
 
     private final ClusterManagerGUI risakkaGUI;
+    
+    private static EventNotifier instance = null;
+
+    private EventNotifier(ClusterManagerGUI risakkaGUI) { 
+        this.risakkaGUI = risakkaGUI;
+    }
+    
+    public static void setInstance(ClusterManagerGUI risakkaGUI) {
+        if (instance == null) {
+            instance = new EventNotifier(risakkaGUI);
+        }
+    }
+
+    public static EventNotifier getInstance() {
+        return instance;
+    }
 
     public void addMessage(Integer id, String message) {
         JTextArea messagesArea = risakkaGUI.getServerPanels().get(id).getMessagesArea();
