@@ -68,8 +68,8 @@ public class ClusterManager {
 
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors, initial, conf);
         ClusterManagerGUI risakkaGUI = new ClusterManagerGUI(clusterManager);
-        EventNotifier.setInstance(risakkaGUI);
         risakkaGUI.run();
+        EventNotifier.setInstance(risakkaGUI);
 
     }
     

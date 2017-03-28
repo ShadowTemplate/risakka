@@ -26,8 +26,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 //        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
         if (entries.isEmpty()) {
             EventNotifier.getInstance().addMessage(server.getId(), "[IN] Heartbeat ["
-                    + server.getSender().path().name() + "]\nTerm: " + term + ", prevLogTerm: " + prevLogTerm
-                    + ", prevLogIndex: " + prevLogIndex + ", leaderCommit: " + leaderCommit);
+                    + server.getSender().path().name() + "]");
         } else {
             EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " ["
                     + server.getSender().path().name() + "]\nTerm: " + term + ", prevLogTerm: " + prevLogTerm

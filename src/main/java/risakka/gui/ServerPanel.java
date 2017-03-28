@@ -14,7 +14,7 @@ class ServerPanel {
     private final JLabel stateLabel = new JLabel("State: UNKNOWN");
     private final JLabel termLabel = new JLabel("Term: -1");
     private final JToggleButton activeSwitch = new JToggleButton("ACTIVE");
-    private final JToggleButton electionSwitch = new JToggleButton("Election timer: ON");
+    private final JToggleButton pauseSwitch = new JToggleButton("RUNNING");
     private final JTextArea logArea = new JTextArea(17, 21);
     private final JTextArea messagesArea = new JTextArea(17, 21);
 

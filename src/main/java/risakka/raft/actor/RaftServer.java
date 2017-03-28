@@ -1,5 +1,6 @@
 package risakka.raft.actor;
 
+import akka.japi.Procedure;
 import risakka.util.conf.server.ServerConfImpl;
 import risakka.util.conf.server.ServerConf;
 import akka.actor.ActorSelection;
@@ -71,7 +72,7 @@ public class RaftServer extends UntypedPersistentActor {
         this.lastApplied = 0;
         this.leaderId = null;
     }
-    
+
     @Override
     public void preStart() throws Exception {
         toFollowerState();
@@ -79,6 +80,32 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     // TODO Promemoria: rischedulare immediatamente HeartbeatTimeout appena si ricevono notizie dal server.
+
+    private Procedure<Object> activeActor = message -> {
+        if (!(message instanceof ResumeMessage)) { // discard ResumeMessage when actor is already active
+            try {
+                onReceiveCommand(message); // the behaviour when active is the same as usual
+            } catch (Throwable throwable) {
+                System.err.println(throwable.getMessage());
+                throwable.printStackTrace();
+            }
+        }
+    };
+
+    private Procedure<Object> pausedActor = message -> {
+        if (!(message instanceof PauseMessage)) { // discard PauseMessage when actor is already paused
+            /*
+            * The only messages to be processed when the actor is paused are ResumeMessages that will change the actor
+            * back to the active state. All the other messages must be stashed. They will be processed as soon as the
+            * actor becomes active again, in the same order.
+            */
+            if (message instanceof ResumeMessage) {
+                ((ResumeMessage) message).onReceivedBy(this);
+            } else {
+                stash(); // do not process message and put it into the queue instead
+            }
+        }
+    };
 
     @Override
     public void onReceiveCommand(Object message) throws Throwable {
@@ -170,7 +197,7 @@ public class RaftServer extends UntypedPersistentActor {
         // Schedule a new heartbeat for itself. Starts immediately and repeats every HEARTBEAT_FREQUENCY
         heartbeatSchedule = getContext().system().scheduler().schedule(Duration.Zero(), // q
                 // Duration.create(0, TimeUnit.MILLISECONDS), // q
-Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(), new SendHeartbeatMessage(), // q
+                Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(), new SendHeartbeatMessage(), // q
                 getContext().system().dispatcher(), getSelf());
     }
 
@@ -196,7 +223,6 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
         System.out.println("[" + getSelf().path().name() + "] Starting election");
         votersIds.clear();
         persistentState.updateCurrentTerm(this, persistentState.getCurrentTerm() + 1, () -> { // b
-            System.out.println("Updating term");
             if (EventNotifier.getInstance() != null) {
                 EventNotifier.getInstance().updateTerm(id, persistentState.getCurrentTerm());
             }
@@ -204,21 +230,17 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
             getPersistentState().updateVotedFor(this, getSelf(), () -> {
                 votersIds.add(getSelf().path().toSerializationFormat()); // f
                 scheduleElection(); // g
-                System.out.println("Scheduling election");
                 int lastLogIndex = persistentState.getLog().size();
                 int lastLogTerm = getLastLogTerm(lastLogIndex);
                 sendBroadcastRequest(new RequestVoteRequest(persistentState.getCurrentTerm(), lastLogIndex, lastLogTerm));
             });
         });
-        System.out.println("fuori");
     }
 
     private void sendBroadcastRequest(MessageToServer message) {
         System.out.println("[" + getSelf().path().name() + "] [OUT Broadcast] " + message.getClass().getSimpleName());
         EventNotifier.getInstance().addMessage(id, "[OUT Broadcast] " + message.getClass().getSimpleName());
-        actorAddresses.stream().forEach(actorAddress -> {
-            getContext().actorSelection(actorAddress).tell(message, getSelf());
-        });
+        actorAddresses.forEach(actorAddress -> getContext().actorSelection(actorAddress).tell(message, getSelf()));
     }
 
     private void initializeNextAndMatchIndex() { //B
@@ -322,7 +344,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
             executeCommand(i, leader);
         }
     }
-    
+
     private void executeCommand(int logIndex, Boolean leader) {
         StateMachineCommand command = persistentState.getLog().get(logIndex).getCommand();
 
@@ -355,7 +377,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
             if (command.getSeqNumber() > lastSeqNumber) { //first time
                 //execute command on state machine
                 result = applyToStateMachine(logIndex);
-                
+
             } else { //duplicate request - not execute again
                 if (leader) {  //retrieve response to send to client in the log
                     for (int i = logIndex - 1; i >= 0; i--) {
@@ -376,7 +398,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
                     " of client " + command.getClientId() + " and seqNumber: " + clientSessionMap.get(command.getClientId()));
             EventNotifier.getInstance().addMessage(id, "Committing request: " + command.getCommand() +
                     " of client " + command.getClientId() + " and seqNumber: " + clientSessionMap.get(command.getClientId()));
-            
+
             if (leader) { //answer back to the client
                 ServerResponse serverResponse = new ServerResponse(Status.OK, result, null);
                 System.out.println("[" + getSelf().path().name() + "] [OUT] " + ServerResponse.class.getSimpleName()
@@ -386,7 +408,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
             }
             //TODO update lastApplied
             return;
-        } 
+        }
 
         //client session is expired, command should not be executed
         System.out.println("[" + getSelf().path().name() + "] Client session of " + command.getClientId() + " is expired");
@@ -399,7 +421,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
         }
         //TODO update lastApplied?
     }
-    
+
     private String applyToStateMachine(int index) {
         String result = "(log " + index + ") " + Long.toHexString(Double.doubleToLongBits(Math.random()));
         System.out.println("[" + getSelf().path().name() + "] Applying to state machine. [" + index + "] " + result);
@@ -412,7 +434,7 @@ Duration.create(serverConf.HEARTBEAT_FREQUENCY, TimeUnit.MILLISECONDS), getSelf(
         String serverName = getSender().path().name(); //e.g. node_0
         return Character.getNumericValue(serverName.charAt(serverName.length() - 1));
     }
-    
+
     private void initializeActorAddresses() {
         actorAddresses = new LinkedList<>();
         for (int i = 0; i < serverConf.SERVER_NUMBER; i++) {

@@ -1,6 +1,6 @@
 package risakka.gui;
 
-import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.actor.Terminated;
@@ -8,6 +8,9 @@ import com.typesafe.config.Config;
 import lombok.Getter;
 import risakka.cluster.ClusterManager;
 import risakka.raft.actor.RaftServer;
+import risakka.raft.message.MessageToServer;
+import risakka.raft.message.akka.PauseMessage;
+import risakka.raft.message.akka.ResumeMessage;
 import scala.concurrent.Future;
 
 import javax.swing.*;
@@ -70,7 +73,7 @@ public class ClusterManagerGUI implements Runnable {
         for (Map.Entry<Integer, String> actorEntry : clusterManager.getActors().entrySet()) {
             ServerPanel serverPanel = new ServerPanel(actorEntry.getKey(), actorEntry.getValue());
             setActiveSwitchListener(serverPanel, actorEntry.getKey());
-            setElectionTimeoutSwitchListener(serverPanel, actorEntry.getKey());
+            setPauseSwitchListener(serverPanel, actorEntry.getKey());
             serverPanels.put(actorEntry.getKey(), serverPanel);
             scrollablePanel.add(buildServerPanel(serverPanel, frame.getBackground()));
         }
@@ -86,12 +89,12 @@ public class ClusterManagerGUI implements Runnable {
                 System.out.println("Killing node with id " + nodeId);
                 activeSwitch.setText("INACTIVE");
                 // TODO CHECK KILL
+
                 clusterManager.getActorSystems().get(nodeId).terminate();
             } else if (ev.getStateChange() == ItemEvent.DESELECTED) {
                 //TODO CHECK RE-INIT HERE
                 System.out.println("Reading node with id " + nodeId);
                 activeSwitch.setText("ACTIVE");
-                
                 //recreate the system with the raft server (its address is the same)
                 Config total = ClusterManager.resolveConfigurationForId(nodeId, clusterManager.getInitialConfig(), clusterManager.getNotResolvedConf());
                 ActorSystem system = ActorSystem.create(clusterManager.getNotResolvedConf().CLUSTER_NAME, total);
@@ -101,15 +104,22 @@ public class ClusterManagerGUI implements Runnable {
         });
     }
 
-    private void setElectionTimeoutSwitchListener(ServerPanel serverPanel, Integer nodeId) {
-        JToggleButton timerSwitch = serverPanel.getElectionSwitch();
+    private void setPauseSwitchListener(ServerPanel serverPanel, Integer nodeId) {
+        JToggleButton timerSwitch = serverPanel.getPauseSwitch();
         timerSwitch.addItemListener(ev -> {
             if (ev.getStateChange() == ItemEvent.SELECTED) {
-                timerSwitch.setText("Election timer: OFF");
+                timerSwitch.setText("PAUSED");
+                sendMessage(new PauseMessage(), nodeId);
             } else if (ev.getStateChange() == ItemEvent.DESELECTED) {
-                timerSwitch.setText("Election timer: ON");
+                timerSwitch.setText("RUNNING");
+                sendMessage(new ResumeMessage(), nodeId);
             }
         });
+    }
+
+    private void sendMessage(MessageToServer message, Integer nodeId) {
+        ActorSelection actorSelection = clusterManager.getActorSystems().get(nodeId).actorSelection(clusterManager.getActors().get(nodeId));
+        actorSelection.tell(message, null);
     }
 
     private void setComponentSize(Component component, Dimension dimension) {
@@ -133,7 +143,7 @@ public class ClusterManagerGUI implements Runnable {
         infoContainer.add(Box.createHorizontalStrut(10));
         infoContainer.add(serverPanel.getActiveSwitch());
         infoContainer.add(Box.createHorizontalStrut(10));
-        infoContainer.add(serverPanel.getElectionSwitch());
+        infoContainer.add(serverPanel.getPauseSwitch());
 
         JPanel outerContainer = new JPanel();
         outerContainer.setLayout(new FlowLayout());
@@ -171,6 +181,7 @@ public class ClusterManagerGUI implements Runnable {
                 if (!SwingUtilities.isRightMouseButton(e)) {
                     return;
                 }
+                /*
                 Object[] options = new String[]{"Yes", "No"};
                 int res = JOptionPane.showOptionDialog(null,
                         "The operation is irreversible.\nDo you really want to clean the panel?",
@@ -179,6 +190,8 @@ public class ClusterManagerGUI implements Runnable {
                 if (res == JOptionPane.YES_OPTION) {
                     textArea.setText("");
                 }
+                */
+                textArea.setText("");
             }
         };
     }
