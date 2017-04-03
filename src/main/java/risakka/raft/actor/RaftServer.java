@@ -1,6 +1,7 @@
 package risakka.raft.actor;
 
 import akka.japi.Procedure;
+import org.apache.log4j.Logger;
 import risakka.util.conf.server.ServerConfImpl;
 import risakka.util.conf.server.ServerConf;
 import akka.actor.ActorSelection;
@@ -26,6 +27,8 @@ import scala.concurrent.duration.Duration;
 @Getter
 @Setter
 public class RaftServer extends UntypedPersistentActor {
+
+    private static final Logger logger = Logger.getLogger(RaftServer.class);
 
     // Raft paper fields
     private PersistentState persistentState;
@@ -58,6 +61,8 @@ public class RaftServer extends UntypedPersistentActor {
     private final ServerConfImpl serverConf;
 
     public RaftServer(Integer id) {
+        logger.info("QUESTA E' UNA INFO DEL LOGGER");
+        logger.debug("QUESTO E' UN WARN");
         System.out.println("Creating RaftServer with id " + id);
         serverConf = ServerConf.SettingsProvider.get(getContext().system());
         this.id = id;

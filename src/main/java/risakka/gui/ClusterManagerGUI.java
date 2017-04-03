@@ -178,23 +178,13 @@ public class ClusterManagerGUI implements Runnable {
                 if (!SwingUtilities.isRightMouseButton(e)) {
                     return;
                 }
-                /*
-                Object[] options = new String[]{"Yes", "No"};
-                int res = JOptionPane.showOptionDialog(null,
-                        "The operation is irreversible.\nDo you really want to clean the panel?",
-                        "Cleaning panel", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options,
-                        options[0]);
-                if (res == JOptionPane.YES_OPTION) {
-                    textArea.setText("");
-                }
-                */
                 textArea.setText("");
             }
         };
     }
 
     private Dimension getWindowDimension(int nodesNumber) {
-        int width = nodesNumber == 2 || nodesNumber == 4 ? 1270 : 1870;
+        int width = nodesNumber != 3 && nodesNumber < 5 ? 1270 - 600 * (nodesNumber % 2) : 1870;
         int height = nodesNumber < 4 ? 460 : 860;
         return new Dimension(width, height);
     }
