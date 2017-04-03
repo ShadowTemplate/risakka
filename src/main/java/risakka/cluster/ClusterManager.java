@@ -32,6 +32,22 @@ public class ClusterManager {
         // Initializing every Actor with a different actor system, so that avery one has a different
         // IP:port combination and folder where to save its snapshots
 
+        Boolean singleNode = false;
+        Integer id = null;
+        switch(args.length) {
+            case 0:
+                System.out.println("Starting cluster...");
+                break;
+            case 1:
+                singleNode = true;
+                id = Integer.parseInt(args[0]);
+                System.out.println("Starting server with id " + id + "...");
+                break;
+            default:
+                System.err.println("Error: too many parameters!");
+                return;
+        }
+        
         Map<Integer, String> actors = new HashMap<>();
         ArrayList<ActorSystem> actorSystems = new ArrayList<>();
 
@@ -43,27 +59,18 @@ public class ClusterManager {
         ServerConfImpl conf = new ServerConfImpl(initial);
         conf.printConfiguration();
         
-        //create new log folder
-        File a = new File(conf.LOG_FOLDER);
-        if (a.exists()) {
-            Util.deleteFolderRecursively(conf.LOG_FOLDER);
-        }
-
-        //for each server resolve config with its id and ip/port
-        for (int i = 0; i < conf.SERVER_NUMBER; i++) {
-            Config total = resolveConfigurationForId(i, initial, conf);
-
-            //create folders for journal and snapshots
-            ServerConfImpl.getJournalFolder(total).mkdirs();
-            ServerConfImpl.getSnapshotFolder(total).mkdirs();
-
-            //create system, launch actor (the raft server) and store its address
-            ActorSystem system = ActorSystem.create(conf.CLUSTER_NAME, total);
-            system.actorOf(Props.create(RaftServer.class, i), conf.PREFIX_NODE_NAME + i);
-            String address = Util.getAddressFromId(i, conf.CLUSTER_NAME, conf.NODES_IPS[i], conf.NODES_PORTS[i], conf.PREFIX_NODE_NAME);
+        if(singleNode) {
+            launchSingleNode(id, initial, conf, actorSystems, actors);
+        } else { 
+            //create new log folder
+            File a = new File(conf.LOG_FOLDER);
+            if (a.exists()) {
+                Util.deleteFolderRecursively(conf.LOG_FOLDER);
+            }
             
-            actorSystems.add(system);
-            actors.put(i, address);
+            for (int i = 0; i < conf.SERVER_NUMBER; i++) {
+                launchSingleNode(i, initial, conf, actorSystems, actors);
+            }
         }
 
         ClusterManager clusterManager = new ClusterManager(actorSystems, actors, initial, conf);
@@ -71,6 +78,23 @@ public class ClusterManager {
         risakkaGUI.run();
         EventNotifier.setInstance(risakkaGUI);
 
+    }
+    
+    public static void launchSingleNode(int id, Config initial, ServerConfImpl notResolvedConf, ArrayList<ActorSystem> actorSystems, Map<Integer, String> actors) {
+        //resolve config with its id and ip/port
+        Config total = resolveConfigurationForId(id, initial, notResolvedConf);
+
+        //create folders for journal and snapshots
+        ServerConfImpl.getJournalFolder(total).mkdirs();
+        ServerConfImpl.getSnapshotFolder(total).mkdirs();
+
+        //create system, launch actor (the raft server) and store its address
+        ActorSystem system = ActorSystem.create(notResolvedConf.CLUSTER_NAME, total);
+        system.actorOf(Props.create(RaftServer.class, id), notResolvedConf.PREFIX_NODE_NAME + id);
+        String address = Util.getAddressFromId(id, notResolvedConf.CLUSTER_NAME, notResolvedConf.NODES_IPS[id], notResolvedConf.NODES_PORTS[id], notResolvedConf.PREFIX_NODE_NAME);
+
+        actorSystems.add(system);
+        actors.put(id, address);
     }
     
     public static Config resolveConfigurationForId(int id, Config initial, ServerConfImpl notResolvedConf) {
