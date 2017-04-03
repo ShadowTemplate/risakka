@@ -6,7 +6,6 @@ import com.typesafe.config.Config;
 import risakka.util.Util;
 
 import java.io.File;
-import java.lang.reflect.Field;
 
 public class ServerConfImpl implements Extension {
     
@@ -31,8 +30,8 @@ public class ServerConfImpl implements Extension {
         NODES_PORTS = new String[SERVER_NUMBER];
 
         for (int i = 0; i < SERVER_NUMBER; i++) {
-            NODES_IPS[i] = config.getString("servers.addresses.IP_NODE_" + i); // TODO ADD DEFAULT
-            NODES_PORTS[i] = config.getString("servers.addresses.PORT_NODE_" + i); // TODO ADD DEFAULT
+            NODES_IPS[i] = config.getString("servers.addresses.IP_NODE_" + i);
+            NODES_PORTS[i] = config.getString("servers.addresses.PORT_NODE_" + i);
         }
         
     }

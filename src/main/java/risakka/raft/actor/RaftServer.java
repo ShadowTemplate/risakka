@@ -79,8 +79,6 @@ public class RaftServer extends UntypedPersistentActor {
         Recovery.create();
     }
 
-    // TODO Promemoria: rischedulare immediatamente HeartbeatTimeout appena si ricevono notizie dal server.
-
     private Procedure<Object> activeActor = message -> {
         if (!(message instanceof ResumeMessage)) { // discard ResumeMessage when actor is already active
             try {
@@ -202,7 +200,6 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     public void scheduleElection() {
-        // TODO check if, in addition, ElectionTimeoutMessage in Inbox should be removed
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
         int electionTimeout = Util.getRandomElectionTimeout(serverConf.HEARTBEAT_FREQUENCY); // p
@@ -340,6 +337,7 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     public void executeCommands(int minIndex, int maxIndex, Boolean leader) {
+        EventNotifier.getInstance().setCommittedUpTo(id, maxIndex);
         for (int i = minIndex; i <= maxIndex; i++) { //v send answer back to the client when committed
             executeCommand(i, leader);
         }
@@ -365,7 +363,6 @@ public class RaftServer extends UntypedPersistentActor {
                 EventNotifier.getInstance().addMessage(id, "[OUT] " + RegisterClientResponse.class.getSimpleName() + " " + registerClientResponse);
                 command.getClientAddress().tell(registerClientResponse, getSelf());
             }
-            //TODO update lastApplied
             return;
         }
 
@@ -406,7 +403,6 @@ public class RaftServer extends UntypedPersistentActor {
                 EventNotifier.getInstance().addMessage(id, "[OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
                 command.getClientAddress().tell(serverResponse, getSelf());
             }
-            //TODO update lastApplied
             return;
         }
 
@@ -419,15 +415,23 @@ public class RaftServer extends UntypedPersistentActor {
             EventNotifier.getInstance().addMessage(id, "[OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
             command.getClientAddress().tell(serverResponse, getSelf());
         }
-        //TODO update lastApplied?
     }
 
     private String applyToStateMachine(int index) {
-        String result = "(log " + index + ") " + Long.toHexString(Double.doubleToLongBits(Math.random()));
-        System.out.println("[" + getSelf().path().name() + "] Applying to state machine. [" + index + "] " + result);
-        EventNotifier.getInstance().addMessage(id, "Applying to state machine. [" + index + "] " + result);
-        persistentState.getLog().get(index).getCommand().setResult(result);
-        return result;
+        return applyToStateMachine(lastApplied, index);
+    }
+    
+    private String applyToStateMachine(int startIndex, int endIndex) {
+        if (startIndex >= endIndex) {
+            return persistentState.getLog().get(endIndex).getCommand().getResult();
+        }
+        startIndex++;
+        String result = "(log " + startIndex + ") " + persistentState.getLog().get(startIndex).getCommand().toString();
+        System.out.println("[" + getSelf().path().name() + "] Applying to state machine. [" + startIndex + "] " + result);
+        EventNotifier.getInstance().addMessage(id, "Applying to state machine. [" + startIndex + "] " + result);
+        persistentState.getLog().get(startIndex).getCommand().setResult(result);
+        lastApplied = startIndex;
+        return applyToStateMachine(startIndex, endIndex);
     }
 
     public int getSenderServerId() {
@@ -447,7 +451,7 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public String persistenceId() {
-        return "id_"; // TODO check
+        return "id_" + id;
     }
 
     //Still here because it could be useful if we decide to use a snapshot to delete old journals

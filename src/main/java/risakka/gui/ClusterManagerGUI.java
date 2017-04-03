@@ -88,11 +88,8 @@ public class ClusterManagerGUI implements Runnable {
             if (ev.getStateChange() == ItemEvent.SELECTED) {
                 System.out.println("Killing node with id " + nodeId);
                 activeSwitch.setText("INACTIVE");
-                // TODO CHECK KILL
-
                 clusterManager.getActorSystems().get(nodeId).terminate();
             } else if (ev.getStateChange() == ItemEvent.DESELECTED) {
-                //TODO CHECK RE-INIT HERE
                 System.out.println("Reading node with id " + nodeId);
                 activeSwitch.setText("ACTIVE");
                 //recreate the system with the raft server (its address is the same)

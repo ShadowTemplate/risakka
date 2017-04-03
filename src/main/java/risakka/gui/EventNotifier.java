@@ -35,6 +35,12 @@ public class EventNotifier {
         logArea.append("[pos: " + position + ", term: " + entry.getTermNumber() + "] {client: " +
                 entry.getCommand().getClientId() + "}\n" + entry.getCommand().getCommand() + "\n");
     }
+    
+    public void setCommittedUpTo(Integer id, Integer committedIndex) {
+        JTextArea logArea = risakkaGUI.getServerPanels().get(id).getLogArea();
+        //TODO colour
+        logArea.append("Committed up to " + committedIndex + "\n");
+    }
 
     public void updateState(Integer id, ServerState state) {
         String color;

@@ -19,7 +19,6 @@ import risakka.gui.EventNotifier;
 @AllArgsConstructor // TODO Maybe we can set (access = AccessLevel.PRIVATE)
 public class PersistentState implements Serializable {
 
-    // TODO check how to init them (with 0 or by loading from the persistent state)
     private Integer currentTerm = 0; // a
     private ActorRef votedFor = null;
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
@@ -45,7 +44,6 @@ public class PersistentState implements Serializable {
         raftServer.persist(this, ignored -> {
             onSuccess.run();
         });
-
     }
 
     public void updateLog(RaftServer raftServer, int startIndex, List<LogEntry> entries, Runnable onSuccess) {

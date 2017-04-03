@@ -137,6 +137,7 @@ public class RaftClient extends UntypedActor {
             } else { //stop
                 System.out.println("Crashing: no successful registration");
                 getContext().stop(getSelf());
+                //TODO crash
             }
         }
     }
@@ -160,6 +161,7 @@ public class RaftClient extends UntypedActor {
             } else { //stop
                 System.out.println("Crashing: no successful response");
                 getContext().stop(getSelf());
+                //TODO crash
             }
         } catch (Exception ex) {
             Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
