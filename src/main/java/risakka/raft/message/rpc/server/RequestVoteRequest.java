@@ -1,7 +1,7 @@
 package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
-import risakka.gui.EventNotifier;
+import risakka.raft.miscellanea.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
 

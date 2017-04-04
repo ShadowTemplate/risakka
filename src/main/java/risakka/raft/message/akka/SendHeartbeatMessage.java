@@ -6,7 +6,7 @@ import risakka.raft.message.MessageToServer;
 import risakka.raft.message.rpc.server.AppendEntriesRequest;
 
 import java.util.ArrayList;
-import risakka.gui.EventNotifier;
+import risakka.raft.miscellanea.EventNotifier;
 
 @AllArgsConstructor
 public class SendHeartbeatMessage implements MessageToServer {

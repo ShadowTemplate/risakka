@@ -1,22 +1,26 @@
-package risakka.gui;
+package risakka.raft.miscellanea;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import risakka.raft.log.LogEntry;
-import risakka.raft.miscellanea.ServerState;
 
 import javax.swing.*;
+import risakka.gui.ClusterManagerGUI;
+import risakka.raft.log.StateMachineCommand;
 
 public class EventNotifier {
 
     private final ClusterManagerGUI risakkaGUI;
     private final Map<Integer, Integer> leaderOfTerm; //pair of term and leaderId
+    private final SequentialContainer<LogEntry> globalLog;
     
     private static EventNotifier instance = null;
 
     private EventNotifier(ClusterManagerGUI risakkaGUI) { 
         this.risakkaGUI = risakkaGUI;
         this.leaderOfTerm = new HashMap<>();
+        this.globalLog = new SequentialContainer<>();
     }
     
     public static void setInstance(ClusterManagerGUI risakkaGUI) {
@@ -40,10 +44,21 @@ public class EventNotifier {
                 entry.getCommand().getClientId() + "}\n" + entry.getCommand().getCommand() + "\n");
     }
     
-    public void setCommittedUpTo(Integer id, Integer committedIndex) {
+    public void setCommittedUpTo(Integer id, Integer startCommittedIndex, Integer endCommittedIndex, List<LogEntry> entries) {
         JTextArea logArea = risakkaGUI.getServerPanels().get(id).getLogArea();
         //TODO colour
-        logArea.append("Committed up to " + committedIndex + "\n");
+        logArea.append("Committed up to " + endCommittedIndex + "\n");
+        
+        //add each committed entry in the global state, if not present 
+        for (int i = startCommittedIndex; i <= endCommittedIndex; i++) {
+            LogEntry entry = entries.get(i - startCommittedIndex); //get relative entry
+            if(globalLog.size() < i) { //no entry in position i
+                assert globalLog.size() == (i - 1); //previous entry must be already committed and stored into global log
+                globalLog.set(i, new LogEntry(entry.getTermNumber(), new StateMachineCommand(entry.getCommand())));
+            } else { //entry already in this position
+                assert entry.equals(globalLog.get(i)) : "Log matching property violated";
+            }
+        }
     }
 
     public void updateState(Integer id, ServerState state, Integer term) {
@@ -52,7 +67,7 @@ public class EventNotifier {
             color = "#1a7a07";
             
             //check that no other server became leader in this term 
-            assert(leaderOfTerm.get(term) == null); // Election Safety property
+            assert leaderOfTerm.get(term) == null : "Election Safety property violated";
             leaderOfTerm.put(term, id);
             
         } else if (state == ServerState.CANDIDATE) {

@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import lombok.Getter;
 import lombok.Setter;
-import risakka.gui.EventNotifier;
+import risakka.raft.miscellanea.EventNotifier;
 import risakka.raft.log.LogEntry;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToServer;
@@ -191,7 +191,7 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     private void sendNoOp() {
-        StateMachineCommand nop = new StateMachineCommand(StateMachineCommand.NOOP, getSelf());
+        StateMachineCommand nop = new StateMachineCommand(StateMachineCommand.NOOP, null);
         addEntryToLogAndSendToFollowers(nop);
     }
 
@@ -293,10 +293,7 @@ public class RaftServer extends UntypedPersistentActor {
 
             ActorSelection actor = buildAddressFromId(followerId);
             //get new entries
-            List<LogEntry> entries = new ArrayList<>();
-            for (int j = nextIndex[followerId]; j <= lastIndex; j++) {
-                entries.add(server.getPersistentState().getLog().get(j)); // TODO fix bug here
-            }
+            List<LogEntry> entries = getEntriesInRange(server, nextIndex[followerId], lastIndex);
 
             if (nextIndex[followerId] > 1) { //at least one entry is already committed
                 //previous entry w.r.t. the new ones that has received RegisterClientRequest match in order to accept the new ones
@@ -313,6 +310,14 @@ public class RaftServer extends UntypedPersistentActor {
                 actor.tell(appendEntriesRequest, getSelf());
             }
         }
+    }
+    
+    private List getEntriesInRange(RaftServer server, int startIndex, int endIndex) {
+        List<LogEntry> entries = new ArrayList<>();
+        for (int j = startIndex; j <= endIndex; j++) {
+            entries.add(server.getPersistentState().getLog().get(j)); // TODO fix bug here
+        }
+        return entries;
     }
 
     @Override
@@ -342,7 +347,8 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     public void executeCommands(int minIndex, int maxIndex, Boolean leader) {
-        EventNotifier.getInstance().setCommittedUpTo(id, maxIndex);
+        List committedEntries = getEntriesInRange(this, minIndex, maxIndex);
+        EventNotifier.getInstance().setCommittedUpTo(id, minIndex, maxIndex, committedEntries);
         for (int i = minIndex; i <= maxIndex; i++) { //v send answer back to the client when committed
             executeCommand(i, leader);
         }

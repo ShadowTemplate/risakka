@@ -8,7 +8,7 @@ import risakka.raft.message.MessageToServer;
 import risakka.raft.miscellanea.ServerState;
 
 import java.util.List;
-import risakka.gui.EventNotifier;
+import risakka.raft.miscellanea.EventNotifier;
 
 @AllArgsConstructor
 @ToString

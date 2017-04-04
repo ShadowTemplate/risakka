@@ -7,7 +7,7 @@ import com.typesafe.config.ConfigFactory;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import risakka.gui.ClusterManagerGUI;
-import risakka.gui.EventNotifier;
+import risakka.raft.miscellanea.EventNotifier;
 
 import java.io.File;
 import java.io.IOException;

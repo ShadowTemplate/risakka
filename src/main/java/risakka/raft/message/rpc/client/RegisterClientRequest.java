@@ -1,6 +1,6 @@
 package risakka.raft.message.rpc.client;
 
-import risakka.gui.EventNotifier;
+import risakka.raft.miscellanea.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.StateMachineCommand;
 import risakka.raft.message.MessageToServer;

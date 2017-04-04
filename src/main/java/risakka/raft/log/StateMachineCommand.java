@@ -6,10 +6,12 @@ import lombok.Data;
 import lombok.ToString;
 
 import java.io.Serializable;
+import lombok.EqualsAndHashCode;
 
 @Data
 @AllArgsConstructor
 @ToString
+@EqualsAndHashCode
 public class StateMachineCommand implements Serializable {
 
     public static final String NOOP = "NO-OP";
@@ -20,7 +22,7 @@ public class StateMachineCommand implements Serializable {
     private ActorRef clientAddress; //address of actor that issued the request
     private String result;
 
-    StateMachineCommand(StateMachineCommand stateMachineCommand) {
+    public StateMachineCommand(StateMachineCommand stateMachineCommand) {
         this.command = stateMachineCommand.command;
         this.clientId = stateMachineCommand.clientId;
         this.seqNumber = stateMachineCommand.seqNumber;

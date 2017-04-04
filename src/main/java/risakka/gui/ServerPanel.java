@@ -7,7 +7,7 @@ import javax.swing.*;
 
 @Getter
 @AllArgsConstructor
-class ServerPanel {
+public class ServerPanel {
 
     private final Integer id;
     private final String fullName;
