@@ -1,5 +1,7 @@
 package risakka.gui;
 
+import java.util.HashMap;
+import java.util.Map;
 import risakka.raft.log.LogEntry;
 import risakka.raft.miscellanea.ServerState;
 
@@ -8,11 +10,13 @@ import javax.swing.*;
 public class EventNotifier {
 
     private final ClusterManagerGUI risakkaGUI;
+    private final Map<Integer, Integer> leaderOfTerm; //pair of term and leaderId
     
     private static EventNotifier instance = null;
 
     private EventNotifier(ClusterManagerGUI risakkaGUI) { 
         this.risakkaGUI = risakkaGUI;
+        this.leaderOfTerm = new HashMap<>();
     }
     
     public static void setInstance(ClusterManagerGUI risakkaGUI) {
@@ -42,10 +46,15 @@ public class EventNotifier {
         logArea.append("Committed up to " + committedIndex + "\n");
     }
 
-    public void updateState(Integer id, ServerState state) {
+    public void updateState(Integer id, ServerState state, Integer term) {
         String color;
         if (state == ServerState.LEADER) {
             color = "#1a7a07";
+            
+            //check that no other server became leader in this term 
+            assert(leaderOfTerm.get(term) == null);
+            leaderOfTerm.put(term, id);
+            
         } else if (state == ServerState.CANDIDATE) {
             color = "#ff0015";
         } else {

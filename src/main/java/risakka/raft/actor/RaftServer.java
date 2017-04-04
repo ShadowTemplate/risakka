@@ -161,7 +161,7 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println("[" + getSelf().path().name() + "] toFollowerState");
         state = ServerState.FOLLOWER;
         if (EventNotifier.getInstance() != null) {
-            EventNotifier.getInstance().updateState(id, state);
+            EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm());
         }
         cancelSchedule(heartbeatSchedule); // Required when state changed from LEADER to FOLLOWER
         scheduleElection();
@@ -171,7 +171,7 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println("[" + getSelf().path().name() + "] toCandidateState");
         state = ServerState.CANDIDATE; // c
         if (EventNotifier.getInstance() != null) {
-            EventNotifier.getInstance().updateState(id, state);
+            EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm());
         }
         beginElection(); // e, d
     }
@@ -180,7 +180,7 @@ public class RaftServer extends UntypedPersistentActor {
         System.out.println("[" + getSelf().path().name() + "] toLeaderState");
         state = ServerState.LEADER;
         if (EventNotifier.getInstance() != null) {
-            EventNotifier.getInstance().updateState(id, state);
+            EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm());
         }
         leaderId = id;
         cancelSchedule(electionSchedule);
