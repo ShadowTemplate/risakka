@@ -52,7 +52,7 @@ public class EventNotifier {
             color = "#1a7a07";
             
             //check that no other server became leader in this term 
-            assert(leaderOfTerm.get(term) == null);
+            assert(leaderOfTerm.get(term) == null); // Election Safety property
             leaderOfTerm.put(term, id);
             
         } else if (state == ServerState.CANDIDATE) {

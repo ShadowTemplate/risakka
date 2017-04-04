@@ -40,6 +40,7 @@ public class PersistentState implements Serializable {
     }
 
     public void updateLog(RaftServer raftServer, int i, LogEntry item, Runnable onSuccess) {
+        assert(raftServer.getState() != ServerState.LEADER || log.size() < i); //Leader Append-Only property
         log.set(i, item);
         raftServer.persist(this, ignored -> {
             onSuccess.run();
@@ -51,8 +52,10 @@ public class PersistentState implements Serializable {
         for (LogEntry entry : entries) {
             if (log.size() >= currIndex && // there is already an entry in that position
                     !log.get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
+                assert(raftServer.getState() != ServerState.LEADER); //Leader Append-Only property
                 log.deleteFrom(currIndex);
             }
+            assert(raftServer.getState() != ServerState.LEADER || log.size() < currIndex); //Leader Append-Only property
             log.set(currIndex, entry);
             EventNotifier.getInstance().updateLog(raftServer.getId(), currIndex, entry);
             currIndex++;
