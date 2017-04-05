@@ -1,6 +1,7 @@
 package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
+import org.apache.log4j.Logger;
 import risakka.raft.miscellanea.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
@@ -14,7 +15,7 @@ public class AppendEntriesResponse extends ServerRPC implements MessageToServer 
 
     //field needed to update nextIndex and matchIndex 
     private final Integer lastEntryIndex;
-
+    private static final Logger logger = Logger.getLogger(AppendEntriesResponse.class);
     @Override
     public void onReceivedBy(RaftServer server) {
 //        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse with success: " + success);
@@ -34,12 +35,13 @@ public class AppendEntriesResponse extends ServerRPC implements MessageToServer 
         }
 
         //not a heartbeat
-        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse with success: " + success);
+        logger.info(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesResponse with success: " + success);
         int followerId = server.getSenderServerId();
-        System.out.println("follower " + followerId);
+        logger.debug("follower " + followerId);
 
         if (success) { //x
             //update nextIndex and matchIndex
+            logger.debug("Updating nextIndex and matchIndex");
             server.updateNextIndexAtIndex(followerId, lastEntryIndex + 1);
             server.updateMatchIndexAtIndex(followerId, lastEntryIndex);
 
@@ -48,6 +50,7 @@ public class AppendEntriesResponse extends ServerRPC implements MessageToServer 
 
         } else { //y
             //since failed, try again decrementing nextIndex
+            logger.debug("AppendEntries failed. Decrementing nextIndex");
             server.updateNextIndexAtIndex(followerId, server.getNextIndex()[followerId] - 1);
             server.sendAppendEntriesToOneFollower(server, followerId);
         }

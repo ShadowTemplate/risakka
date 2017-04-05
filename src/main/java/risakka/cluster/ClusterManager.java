@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import org.apache.log4j.Logger;
 import risakka.raft.actor.RaftServer;
 import risakka.util.conf.server.ServerConfImpl;
 import risakka.util.Util;
@@ -25,6 +26,7 @@ public class ClusterManager {
     private final Map<Integer, String> actors;
     private final Config initialConfig;
     private final ServerConfImpl notResolvedConf;
+    private static final Logger logger = Logger.getLogger(ClusterManager.class);
 
 
     public static void main(String[] args) throws IOException {
@@ -36,15 +38,15 @@ public class ClusterManager {
         Integer id = null;
         switch(args.length) {
             case 0:
-                System.out.println("Starting cluster...");
+                logger.info("Starting cluster");
                 break;
             case 1:
                 singleNode = true;
                 id = Integer.parseInt(args[0]);
-                System.out.println("Starting server with id " + id + "...");
+                logger.info("Starting single server with id " + id + "...");
                 break;
             default:
-                System.err.println("Error: too many parameters!");
+                logger.error("Error: too many parameters!");
                 return;
         }
         
@@ -65,6 +67,7 @@ public class ClusterManager {
             //create new log folder
             File a = new File(conf.LOG_FOLDER);
             if (a.exists()) {
+                logger.debug("Deleting the Logs folder");
                 Util.deleteFolderRecursively(conf.LOG_FOLDER);
             }
             

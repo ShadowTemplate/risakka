@@ -63,7 +63,7 @@ public class RaftServer extends UntypedPersistentActor {
     public RaftServer(Integer id) {
         logger.info("QUESTA E' UNA INFO DEL LOGGER");
         logger.debug("QUESTO E' UN WARN");
-        System.out.println("Creating RaftServer with id " + id);
+        logger.info("Creating RaftServer with id " + id);
         serverConf = ServerConf.SettingsProvider.get(getContext().system());
         this.id = id;
         this.votersIds = new HashSet<>();
@@ -112,11 +112,11 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void onReceiveCommand(Object message) throws Throwable {
-        System.out.println("[" + getSelf().path().name() + "] Received command " + message.getClass().getSimpleName());
+        logger.debug("[" + getSelf().path().name() + "] Received command " + message.getClass().getSimpleName());
 
         if (actorAddresses == null && EventNotifier.getInstance() == null // server not initialized
                 && message instanceof MessageToServer) { // not an Akka internal message (e.g. snapshot-related) I would still be able to process
-            System.out.println("[" + getSelf().path().name() + "] can't process message because it is still uninitialized");
+            logger.debug("[" + getSelf().path().name() + "] can't process message because it is still uninitialized");
             unhandled(message);
             return;
         }
@@ -128,12 +128,12 @@ public class RaftServer extends UntypedPersistentActor {
                 EventNotifier.getInstance().addMessage(id, "[IN] " + message.getClass().getSimpleName());
             }
         } else if (message instanceof SaveSnapshotFailure) {
-            System.out.println("[" + getSelf().path().name() + "] Error while performing the snapshot. " + message);
+            logger.error("[" + getSelf().path().name() + "] Error while performing the snapshot. " + message);
             if (EventNotifier.getInstance() != null) {
                 EventNotifier.getInstance().addMessage(id, "[IN] " + message.getClass().getSimpleName() + "\nCause: " + ((SaveSnapshotFailure) message).cause());
             }
         } else {
-            System.out.println("[" + getSelf().path().name() + "] Unknown message type: " + message.getClass());
+            logger.debug("[" + getSelf().path().name() + "] Unknown message type: " + message.getClass());
             if (EventNotifier.getInstance() != null) {
                 EventNotifier.getInstance().addMessage(id, "[IN] Unknown message type: " + message.getClass().getSimpleName());
             }
@@ -143,22 +143,22 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void onReceiveRecover(Object message) throws Throwable {
-        System.out.println("[" + getSelf().path().name() + "] Received recover " + message.getClass().getSimpleName());
+        logger.debug("[" + getSelf().path().name() + "] Received recover " + message.getClass().getSimpleName());
         if (message instanceof PersistentState) { // called when server recovers from durable storage
             persistentState = (PersistentState) message; //buildFromSnapshotOffer((PersistentState) message);
-            System.out.println(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
+            logger.debug(getSelf().path().name() + " has loaded old " + persistentState.getClass().getSimpleName());
         } else if (message instanceof RecoveryCompleted) {
-            System.out.println("[" + getSelf().path().name() + "] Recovery completed: " + persistentState.toString());
+            logger.debug("[" + getSelf().path().name() + "] Recovery completed: " + persistentState.toString());
             //actor can do something else before processing any other message
         } else {
-            System.out.println("[" + getSelf().path().name() + "] Unable to process "
+            logger.error("[" + getSelf().path().name() + "] Unable to process "
                     + message.getClass().getSimpleName() + ". Forwarding to onReceiveCommand()...");
             onReceiveCommand(message);
         }
     }
 
     public void toFollowerState() {
-        System.out.println("[" + getSelf().path().name() + "] toFollowerState");
+        logger.debug("[" + getSelf().path().name() + "] toFollowerState");
         state = ServerState.FOLLOWER;
         if (EventNotifier.getInstance() != null) {
             EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm());
@@ -168,7 +168,7 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     public void toCandidateState() {
-        System.out.println("[" + getSelf().path().name() + "] toCandidateState");
+        logger.debug("[" + getSelf().path().name() + "] toCandidateState");
         state = ServerState.CANDIDATE; // c
         if (EventNotifier.getInstance() != null) {
             EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm());
@@ -177,7 +177,7 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     public void toLeaderState() {
-        System.out.println("[" + getSelf().path().name() + "] toLeaderState");
+        logger.debug("[" + getSelf().path().name() + "] toLeaderState");
         state = ServerState.LEADER;
         if (EventNotifier.getInstance() != null) {
             EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm());
@@ -208,8 +208,8 @@ public class RaftServer extends UntypedPersistentActor {
         cancelSchedule(electionSchedule);
         // Schedule a new election for itself. Starts after ELECTION_TIMEOUT
         int electionTimeout = Util.getRandomElectionTimeout(serverConf.HEARTBEAT_FREQUENCY); // p
-        System.out.println(getSelf().path().name() + " election timeout: " + electionTimeout);
-        System.out.println("[" + getSelf().path().name() + "] New election timeout: " + electionTimeout);
+        logger.debug(getSelf().path().name() + " election timeout: " + electionTimeout);
+        logger.debug("[" + getSelf().path().name() + "] New election timeout: " + electionTimeout);
         electionSchedule = getContext().system().scheduler().scheduleOnce(
                 Duration.create(electionTimeout, TimeUnit.MILLISECONDS), getSelf(), new ElectionTimeoutMessage(),
                 getContext().system().dispatcher(), getSelf());
@@ -222,7 +222,7 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     public void beginElection() { // d
-        System.out.println("[" + getSelf().path().name() + "] Starting election");
+        logger.info("[" + getSelf().path().name() + "] Starting election");
         votersIds.clear();
         persistentState.updateCurrentTerm(this, persistentState.getCurrentTerm() + 1, () -> { // b
             if (EventNotifier.getInstance() != null) {
@@ -240,7 +240,7 @@ public class RaftServer extends UntypedPersistentActor {
     }
 
     private void sendBroadcastRequest(MessageToServer message) {
-        System.out.println("[" + getSelf().path().name() + "] [OUT Broadcast] " + message.getClass().getSimpleName());
+        logger.debug("[" + getSelf().path().name() + "] [OUT Broadcast] " + message.getClass().getSimpleName());
         EventNotifier.getInstance().addMessage(id, "[OUT Broadcast] " + message.getClass().getSimpleName());
         actorAddresses.forEach(actorAddress -> getContext().actorSelection(actorAddress).tell(message, getSelf()));
     }
@@ -273,7 +273,7 @@ public class RaftServer extends UntypedPersistentActor {
         LogEntry entry = new LogEntry(persistentState.getCurrentTerm(), command);
         int lastIndex = persistentState.getLog().size();
         persistentState.updateLog(this, lastIndex + 1, entry, () -> {
-            System.out.println("[" + getSelf().path().name() + "] Updated log: [" + lastIndex + 1 + "] " + entry);
+            logger.info("[" + getSelf().path().name() + "] Updated log: [" + lastIndex + 1 + "] " + entry);
             EventNotifier.getInstance().updateLog(id, lastIndex + 1, entry);
             sendAppendEntriesToAllFollowers(); //w
         });
@@ -300,12 +300,12 @@ public class RaftServer extends UntypedPersistentActor {
                 LogEntry prevEntry = server.getPersistentState().getLog().get(nextIndex[followerId] - 1);
                 Integer prevLogTerm = prevEntry.getTermNumber();
                 AppendEntriesRequest appendEntriesRequest = new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), nextIndex[followerId] - 1, prevLogTerm, entries, server.getCommitIndex());
-                System.out.println("[" + getSelf().path().name() + "] [OUT] AppendEntriesRequest " + appendEntriesRequest);
+                logger.debug("[" + getSelf().path().name() + "] [OUT] AppendEntriesRequest " + appendEntriesRequest);
                 EventNotifier.getInstance().addMessage(id, "[OUT] AppendEntriesRequest " + appendEntriesRequest);
                 actor.tell(appendEntriesRequest, getSelf());
             } else { //first entry - previous entry fields are null
                 AppendEntriesRequest appendEntriesRequest = new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(), null, null, entries, server.getCommitIndex());
-                System.out.println("[" + getSelf().path().name() + "] [OUT] AppendEntriesRequest " + appendEntriesRequest);
+                logger.debug("[" + getSelf().path().name() + "] [OUT] AppendEntriesRequest " + appendEntriesRequest);
                 EventNotifier.getInstance().addMessage(id, "[OUT] AppendEntriesRequest " + appendEntriesRequest);
                 actor.tell(appendEntriesRequest, getSelf());
             }
@@ -322,12 +322,12 @@ public class RaftServer extends UntypedPersistentActor {
 
     @Override
     public void onPersistRejected(Throwable cause, Object event, long seqNr) {
-        System.out.println("[" + getSelf().path().name() + "] Persist has failed with cause " + cause.toString() + "event " + event.toString());
+        logger.error("[" + getSelf().path().name() + "] Persist has failed with cause " + cause.toString() + "event " + event.toString());
         //turn off the actor here!
     }
 
     public void checkEntriesToCommit() { // z //call iff leader
-        System.out.println("[" + getSelf().path().name() + "] Checking if some entries can be committed");
+        logger.info("[" + getSelf().path().name() + "] Checking if some entries can be committed");
         int oldCommitIndex = commitIndex;
         for (int i = persistentState.getLog().size(); i > commitIndex; i--) {
             int count = 1; // on how many server the entry is replicated (myself for sure)
@@ -358,18 +358,18 @@ public class RaftServer extends UntypedPersistentActor {
         StateMachineCommand command = persistentState.getLog().get(logIndex).getCommand();
 
         if (command.getCommand().equals(StateMachineCommand.NOOP)) {
-            System.out.println("[" + getSelf().path().name() + "] Received a NO-OP: operation not executed");
+            logger.debug("[" + getSelf().path().name() + "] Received a NO-OP: operation not executed");
             return;
         }
 
         //registration command of new client - new client session
         if (command.getCommand().equals(RegisterClientRequest.REGISTER)) {
-            System.out.println("[" + getSelf().path().name() + "] Registering client " + command.getClientAddress());
+            logger.info("[" + getSelf().path().name() + "] Registering client " + command.getClientAddress());
             EventNotifier.getInstance().addMessage(id, "Registering client " + command.getClientAddress());
             clientSessionMap.put(logIndex, -1); //allocate new session
             if (leader) { //answer back to the client
                 RegisterClientResponse registerClientResponse = new RegisterClientResponse(Status.OK, logIndex, null);
-                System.out.println("[" + getSelf().path().name() + "] [OUT] " + RegisterClientResponse.class.getSimpleName()
+                logger.info("[" + getSelf().path().name() + "] [OUT] " + RegisterClientResponse.class.getSimpleName()
                         + " " + registerClientResponse);
                 EventNotifier.getInstance().addMessage(id, "[OUT] " + RegisterClientResponse.class.getSimpleName() + " " + registerClientResponse);
                 command.getClientAddress().tell(registerClientResponse, getSelf());
@@ -402,14 +402,14 @@ public class RaftServer extends UntypedPersistentActor {
 
             //update last request of the client
             clientSessionMap.put(command.getClientId(), Math.max(command.getSeqNumber(), lastSeqNumber));
-            System.out.println("[" + getSelf().path().name() + "] Committing request: " + command.getCommand() +
+            logger.info("[" + getSelf().path().name() + "] Committing request: " + command.getCommand() +
                     " of client " + command.getClientId() + " and seqNumber: " + clientSessionMap.get(command.getClientId()));
             EventNotifier.getInstance().addMessage(id, "Committing request: " + command.getCommand() +
                     " of client " + command.getClientId() + " and seqNumber: " + clientSessionMap.get(command.getClientId()));
 
             if (leader) { //answer back to the client
                 ServerResponse serverResponse = new ServerResponse(Status.OK, result, null);
-                System.out.println("[" + getSelf().path().name() + "] [OUT] " + ServerResponse.class.getSimpleName()
+                logger.info("[" + getSelf().path().name() + "] [OUT] " + ServerResponse.class.getSimpleName()
                         + serverResponse);
                 EventNotifier.getInstance().addMessage(id, "[OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
                 command.getClientAddress().tell(serverResponse, getSelf());
@@ -418,11 +418,11 @@ public class RaftServer extends UntypedPersistentActor {
         }
 
         //client session is expired, command should not be executed
-        System.out.println("[" + getSelf().path().name() + "] Client session of " + command.getClientId() + " is expired");
+        logger.info("[" + getSelf().path().name() + "] Client session of " + command.getClientId() + " is expired");
         EventNotifier.getInstance().addMessage(id, "Client session of " + command.getClientId() + " is expired");
         if (leader) {
             ServerResponse serverResponse = new ServerResponse(Status.SESSION_EXPIRED, null, null);
-            System.out.println("[" + getSelf().path().name() + "] [OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
+            logger.info("[" + getSelf().path().name() + "] [OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
             EventNotifier.getInstance().addMessage(id, "[OUT] " + ServerResponse.class.getSimpleName() + serverResponse);
             command.getClientAddress().tell(serverResponse, getSelf());
         }
@@ -438,7 +438,7 @@ public class RaftServer extends UntypedPersistentActor {
         }
         startIndex++;
         String result = "(log " + startIndex + ") " + persistentState.getLog().get(startIndex).getCommand().toString();
-        System.out.println("[" + getSelf().path().name() + "] Applying to state machine. [" + startIndex + "] " + result);
+        logger.info("[" + getSelf().path().name() + "] Applying to state machine. [" + startIndex + "] " + result);
         EventNotifier.getInstance().addMessage(id, "Applying to state machine. [" + startIndex + "] " + result);
         persistentState.getLog().get(startIndex).getCommand().setResult(result);
         lastApplied = startIndex;

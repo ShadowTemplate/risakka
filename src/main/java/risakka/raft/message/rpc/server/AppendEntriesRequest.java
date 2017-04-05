@@ -2,6 +2,7 @@ package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
 import lombok.ToString;
+import org.apache.log4j.Logger;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
 import risakka.raft.message.MessageToServer;
@@ -20,14 +21,17 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
     private final Integer prevLogTerm;
     private final List<LogEntry> entries;
     private final Integer leaderCommit;
+    private static final Logger logger = Logger.getLogger(AppendEntriesRequest.class);
 
     @Override
     public void onReceivedBy(RaftServer server) {
 //        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
         if (entries.isEmpty()) {
+            logger.debug("Heartbeat received. entries.isEmpty() == TRUE");
             EventNotifier.getInstance().addMessage(server.getId(), "[IN] Heartbeat ["
                     + server.getSender().path().name() + "]");
         } else {
+            logger.debug("Heartbeat received.");
             EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " ["
                     + server.getSender().path().name() + "]\nTerm: " + term + ", prevLogTerm: " + prevLogTerm
                     + ", prevLogIndex: " + prevLogIndex + ", leaderCommit: " + leaderCommit + ", entries:\n" + entries);
@@ -37,7 +41,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 
         AppendEntriesResponse response;
         if (server.getState() == ServerState.CANDIDATE && term >= server.getPersistentState().getCurrentTerm()) { // o
-            System.out.println(server.getSelf().path().name() + " recognizes " + server.getSender().path().name() +
+            logger.info(server.getSelf().path().name() + " recognizes " + server.getSender().path().name() +
                     " as LEADER and will switch to FOLLOWER state");
             server.toFollowerState();
         }
@@ -48,6 +52,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 
         //AppendEntries (including heartbeat) with older term 
         if (term < server.getPersistentState().getCurrentTerm()) {
+            logger.debug("AppendEntries (including heartbeat) with older term received.");
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, null);
             server.getSender().tell(response, server.getSelf());
             return;
@@ -57,6 +62,7 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
 
         //heartbeat still valid
         if (entries.isEmpty()) {
+            logger.debug("Hearthbeat from the leader received");
             server.scheduleElection();
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), true, null);
             server.getSender().tell(response, server.getSelf());
@@ -69,15 +75,17 @@ public class AppendEntriesRequest extends ServerRPC implements MessageToServer {
         if it is not the first entry in the log
             AND
         (the log has no entry in prevLogIndex OR the terms at prevLogIndex are not equal */
-        System.out.println(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
+        logger.info(server.getSelf().path().name() + " in state " + server.getState() + " has received AppendEntriesRequest");
         if (prevLogIndex != null && (server.getPersistentState().getLog().size() < prevLogIndex || //prevLogIndex == null when log is empty
                 !server.getPersistentState().getLog().get(prevLogIndex).getTermNumber().equals(prevLogTerm))) {
             response = new AppendEntriesResponse(server.getPersistentState().getCurrentTerm(), false, -1);
             server.getSender().tell(response, server.getSelf());
+            logger.debug("Log has no entry in prevLogIndex OR the terms at prevLogIndex are not equal");
             return;
         }
 
         /*CASE SUCCEED*/
+        logger.debug("AppendEntries succeded");
         int startIndex = (prevLogIndex == null) ? 1 : prevLogIndex + 1; //null iff it is the first entry to commit
         server.getPersistentState().updateLog(server, startIndex, entries, () -> {
             if (leaderCommit > server.getCommitIndex()) {

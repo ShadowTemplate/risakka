@@ -45,13 +45,14 @@ public class RaftClient extends UntypedActor {
     private int clientId;
     private Integer seqNumber;
     private ActorSelection serverAddress;
+    private static final org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(RaftClient.class);
 
 
     private Timeout answeringTimeout;
     private final ClientConfImpl clientConf;
 
     public RaftClient() {
-        System.out.println("Creating RaftClient");
+        logger.info("Creating RaftClient");
         clientConf = ClientConf.SettingsProvider.get(getContext().system());
         this.client = getSelf();
         this.seqNumber = 0;
@@ -74,7 +75,7 @@ public class RaftClient extends UntypedActor {
         if (message instanceof ClientRequest) {
             sendClientRequest((ClientRequest)message);
         } else {
-            System.out.println("Unknown message type: " + message.getClass());
+            logger.debug("Unknown message type: " + message.getClass());
             unhandled(message);
         }
     }
@@ -87,11 +88,10 @@ public class RaftClient extends UntypedActor {
     //process responses of the server based on its request
     public void processResponse(Object requestMessage, Object responseMessage) {
         if (responseMessage instanceof MessageToClient) {
-            System.out.println(getSelf().path().name() + " has received " + responseMessage.getClass().getSimpleName());
+            logger.info(getSelf().path().name() + " has received " + responseMessage.getClass().getSimpleName());
             ((MessageToClient) responseMessage).onReceivedBy(this, requestMessage);
         } else {
-            System.out.println("Unknown message type: " + responseMessage.getClass());
-            System.out.println("process");
+            logger.debug("Unknown message type: " + responseMessage.getClass());
             unhandled(responseMessage);
         }
     }
@@ -100,7 +100,7 @@ public class RaftClient extends UntypedActor {
 
     public int getRandomServerId() {
         int serverToContact = (int) (Math.random() * (clientConf.SERVER_NUMBER));
-        System.out.println("Server chosen randomly: " + serverToContact);
+        logger.info("Server chosen randomly: " + serverToContact);
         return serverToContact;
     }
 
@@ -123,7 +123,7 @@ public class RaftClient extends UntypedActor {
     }
 
     private void registerContactingSpecificServer(int serverId, int attempts) {
-        System.out.println("Contacting server " + serverId + " - attempt " + attempts);
+        logger.info("Contacting server " + serverId + " - attempt " + attempts);
         serverAddress = buildAddressFromId(serverId);
         //send register request and wait
         Future<Object> future = Patterns.ask(serverAddress, new RegisterClientRequest(), answeringTimeout);
@@ -135,7 +135,7 @@ public class RaftClient extends UntypedActor {
             if (attempts < clientConf.MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
                 registerContactingRandomServer(attempts + 1);
             } else { //stop
-                System.out.println("Crashing: no successful registration");
+                logger.info("Crashing: no successful registration");
                 getContext().stop(getSelf());
                 //TODO crash
             }
@@ -147,7 +147,7 @@ public class RaftClient extends UntypedActor {
     }
     
     private void sendClientRequest(ClientRequest message, int attempts) {
-        System.out.println(getSelf().path().name() + " sends client request with id " + message.getCommand().getSeqNumber() + " - attempt " + attempts);
+        logger.info(getSelf().path().name() + " sends client request with id " + message.getCommand().getSeqNumber() + " - attempt " + attempts);
 
         Future<Object> future = Patterns.ask(serverAddress, message, answeringTimeout);
         try {
@@ -155,16 +155,17 @@ public class RaftClient extends UntypedActor {
 
         } catch (TimeoutException ex) {
             if (attempts < clientConf.MAX_ATTEMPTS) { //try again until MAX_ATTEMPTS is reached
-                System.out.println("Server didn't reply. Choosing another server");
+                logger.info("Server didn't reply. Choosing another server");
                 serverAddress = buildAddressFromId(getRandomServerId());
                 sendClientRequest(message, attempts + 1);
             } else { //stop
-                System.out.println("Crashing: no successful response");
+                logger.info("Crashing: no successful response");
                 getContext().stop(getSelf());
                 //TODO crash
             }
         } catch (Exception ex) {
-            Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error(ex.getMessage());
+            //Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
         }
  
     }
@@ -182,12 +183,13 @@ public class RaftClient extends UntypedActor {
                     System.out.println("Type your message to be sent to the server: ");
                     String command = bufferRead.readLine();
 
-                    System.out.println("New command: " + command + " - SeqNumber: " + client.seqNumber);
+                    logger.info("New command: " + command + " - SeqNumber: " + client.seqNumber);
                     client.onReceive(new ClientRequest(new StateMachineCommand(command, client.clientId, client.seqNumber++)));
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (Throwable ex) {
-                    Logger.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
+                    logger.error(ex.getMessage());
+                    //.getLogger(RaftClient.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }

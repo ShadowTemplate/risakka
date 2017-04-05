@@ -1,5 +1,6 @@
 package risakka.raft.message.rpc.client;
 
+import org.apache.log4j.Logger;
 import risakka.raft.miscellanea.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.StateMachineCommand;
@@ -8,10 +9,11 @@ import risakka.raft.message.MessageToServer;
 public class RegisterClientRequest implements MessageToServer {
     
     public final static String REGISTER = "Register";
+    private static final Logger logger = Logger.getLogger(RegisterClientRequest.class);
 
     @Override
     public void onReceivedBy(RaftServer server) {
-        System.out.println("Server " + server.getSelf().path().name() + " in state " + server.getState() + " has received RegisterClientRequest");
+        logger.info("Server " + server.getSelf().path().name() + " in state " + server.getState() + " has received RegisterClientRequest");
         EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " [" + server.getSender().path().name() + "]");
       
         switch (server.getState()) {

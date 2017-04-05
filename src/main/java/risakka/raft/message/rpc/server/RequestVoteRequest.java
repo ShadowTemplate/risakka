@@ -1,6 +1,7 @@
 package risakka.raft.message.rpc.server;
 
 import lombok.AllArgsConstructor;
+import org.apache.log4j.Logger;
 import risakka.raft.miscellanea.EventNotifier;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
@@ -13,9 +14,11 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
     private final Integer lastLogIndex;
     private final Integer lastLogTerm;
 
+    private static final Logger logger = Logger.getLogger(RequestVoteRequest.class);
+
     @Override
     public void onReceivedBy(RaftServer server) {
-        System.out.println("\n" + server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteRequest from " + server.getSender().path().name() + "\n");
+        logger.info("\n" + server.getSelf().path().name() + " in state " + server.getState() + " has received RequestVoteRequest from " + server.getSender().path().name() + "\n");
         EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName() + " [" +
                 server.getSender().path().name() + "]\nTerm: " + term + ", lastLogTerm: " + lastLogTerm + ", lastLogIndex: " + lastLogIndex);
 
@@ -23,7 +26,7 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
 
         RequestVoteResponse response;
         if (term < server.getPersistentState().getCurrentTerm()) { // m
-            System.out.println(server.getSelf().path().name() + " has higher term than and denies vote to " + server.getSender().path().name() + "\n");
+            logger.info(server.getSelf().path().name() + " has higher term than and denies vote to " + server.getSender().path().name() + "\n");
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
             server.getSender().tell(response, server.getSelf());
             return;
@@ -31,7 +34,7 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
 
         if ((server.getPersistentState().getVotedFor() == null || server.getPersistentState().getVotedFor().equals(server.getSender())) &&
                 isLogUpToDate(server, lastLogIndex, lastLogTerm)) { // n
-            System.out.println(server.getSelf().path().name() + " grants vote to " + server.getSender().path().name() + "\n");
+            logger.info(server.getSelf().path().name() + " grants vote to " + server.getSender().path().name() + "\n");
             server.getPersistentState().updateVotedFor(server, server.getSelf(), () -> {
                 server.scheduleElection(); //granting vote --> reschedule election timeout
                 server.getSender().tell(new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), true), server.getSelf());
@@ -39,7 +42,7 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
             return;
         }
 
-        System.out.println(server.getSelf().path().name() + " has log not matching and denies vote to " + server.getSender().path().name() + "\n");
+        logger.info(server.getSelf().path().name() + " has log not matching and denies vote to " + server.getSender().path().name() + "\n");
         response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);
         server.getSender().tell(response, server.getSelf());
     }

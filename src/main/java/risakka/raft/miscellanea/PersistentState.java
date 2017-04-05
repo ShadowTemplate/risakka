@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.apache.log4j.Logger;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
 
@@ -21,11 +22,13 @@ public class PersistentState implements Serializable {
     private Integer currentTerm = 0; // a
     private ActorRef votedFor = null;
     private SequentialContainer<LogEntry> log = new SequentialContainer<>();  // first index is 1
+    private static final Logger logger = Logger.getLogger(PersistentState.class);
 
     public void updateCurrentTerm(RaftServer raftServer, Integer currentTerm, Runnable onSuccess) {
         this.currentTerm = currentTerm;
         this.votedFor = null;
         raftServer.persist(this, ignored -> {
+            logger.debug("persistent updateCurrentTerm called with success");
             onSuccess.run();
         });
     }
@@ -33,6 +36,7 @@ public class PersistentState implements Serializable {
     public void updateVotedFor(RaftServer raftServer, ActorRef votedFor, Runnable onSuccess) {
         this.votedFor = votedFor;
         raftServer.persist(this, ignored -> {
+            logger.debug("persistent updateVotedFor called with success");
             onSuccess.run();
         });
 
@@ -42,6 +46,7 @@ public class PersistentState implements Serializable {
         assert raftServer.getState() != ServerState.LEADER || log.size() < i : "Leader Append-Only property violated";
         log.set(i, item);
         raftServer.persist(this, ignored -> {
+            logger.debug("persistent updateLog called with success");
             onSuccess.run();
         });
     }
@@ -60,6 +65,7 @@ public class PersistentState implements Serializable {
             currIndex++;
         }
         raftServer.persist(this, ignored -> {
+            logger.debug("updateLog called with success");
             onSuccess.run();
         });
 

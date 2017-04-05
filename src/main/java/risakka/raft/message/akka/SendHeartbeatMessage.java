@@ -1,6 +1,7 @@
 package risakka.raft.message.akka;
 
 import lombok.AllArgsConstructor;
+import org.apache.log4j.Logger;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.message.MessageToServer;
 import risakka.raft.message.rpc.server.AppendEntriesRequest;
@@ -11,9 +12,10 @@ import risakka.raft.miscellanea.EventNotifier;
 @AllArgsConstructor
 public class SendHeartbeatMessage implements MessageToServer {
 
+    private static final Logger logger = Logger.getLogger(SendHeartbeatMessage.class);
     @Override
     public void onReceivedBy(RaftServer server) {
-//        System.out.println(server.getSelf().path().name() + " is going to send heartbeat as a LEADER...");
+        logger.debug(server.getSelf().path().name() + " is going to send heartbeat as a LEADER");
         EventNotifier.getInstance().addMessage(server.getId(), "[IN] " + this.getClass().getSimpleName());
 
         sendHeartbeat(server);
