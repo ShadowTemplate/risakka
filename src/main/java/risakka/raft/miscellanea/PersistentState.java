@@ -9,7 +9,6 @@ import risakka.raft.log.LogEntry;
 import java.io.Serializable;
 import java.util.List;
 
-
 @ToString
 @Getter
 @NoArgsConstructor
