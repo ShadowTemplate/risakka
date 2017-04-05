@@ -11,7 +11,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @AllArgsConstructor
 @ToString
-@EqualsAndHashCode
+@EqualsAndHashCode(exclude={"clientAddress", "result"})
 public class StateMachineCommand implements Serializable {
 
     public static final String NOOP = "NO-OP";

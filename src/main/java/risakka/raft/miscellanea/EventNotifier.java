@@ -61,7 +61,7 @@ public class EventNotifier {
         }
     }
 
-    public void updateState(Integer id, ServerState state, Integer term) {
+    public void updateState(Integer id, ServerState state, Integer term, SequentialContainer<LogEntry> allEntries) {
         String color;
         if (state == ServerState.LEADER) {
             color = "#1a7a07";
@@ -69,6 +69,9 @@ public class EventNotifier {
             //check that no other server became leader in this term 
             assert leaderOfTerm.get(term) == null : "Election Safety property violated";
             leaderOfTerm.put(term, id);
+            
+            //check that new leader has all previosly committed entries
+            checkGlobalLogPrefixOf(allEntries);
             
         } else if (state == ServerState.CANDIDATE) {
             color = "#ff0015";
@@ -81,5 +84,11 @@ public class EventNotifier {
 
     public void updateTerm(Integer id, Integer termNumber) {
         risakkaGUI.getServerPanels().get(id).getTermLabel().setText("Term: " + termNumber);
+    }
+    
+    private void checkGlobalLogPrefixOf(SequentialContainer<LogEntry> entries) {
+        for (int i = 1; i <= globalLog.size(); i++) {
+            assert globalLog.get(i).equals(entries.get(i)) : "Leader Completeness property violated";
+        }
     }
 }
