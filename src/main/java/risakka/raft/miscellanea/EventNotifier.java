@@ -46,7 +46,6 @@ public class EventNotifier {
     
     public void setCommittedUpTo(Integer id, Integer startCommittedIndex, Integer endCommittedIndex, List<LogEntry> entries) {
         JTextArea logArea = risakkaGUI.getServerPanels().get(id).getLogArea();
-        //TODO colour
         logArea.append("Committed up to " + endCommittedIndex + "\n");
         
         //add each committed entry in the global state, if not present 
