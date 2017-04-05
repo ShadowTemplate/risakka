@@ -1,10 +1,7 @@
 package risakka.raft.miscellanea;
 
 import akka.actor.ActorRef;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 import org.apache.log4j.Logger;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
@@ -16,7 +13,7 @@ import java.util.List;
 @ToString
 @Getter
 @NoArgsConstructor
-@AllArgsConstructor // TODO Maybe we can set (access = AccessLevel.PRIVATE)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class PersistentState implements Serializable {
 
     private Integer currentTerm = 0; // a
