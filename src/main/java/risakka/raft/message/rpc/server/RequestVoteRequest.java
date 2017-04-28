@@ -25,6 +25,18 @@ public class RequestVoteRequest extends ServerRPC implements MessageToServer {
         onProcedureCall(server, term); // A
 
         RequestVoteResponse response;
+
+        /* Malicious code
+        if (true) {
+            logger.info(server.getSelf().path().name() + " grants vote to " + server.getSender().path().name() + "\n");
+            server.getPersistentState().updateVotedFor(server, server.getSelf(), () -> {
+                server.scheduleElection(); //granting vote --> reschedule election timeout
+                server.getSender().tell(new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), true), server.getSelf());
+            });
+            return;
+        }
+        */
+
         if (term < server.getPersistentState().getCurrentTerm()) { // m
             logger.info(server.getSelf().path().name() + " has higher term than and denies vote to " + server.getSender().path().name() + "\n");
             response = new RequestVoteResponse(server.getPersistentState().getCurrentTerm(), false);

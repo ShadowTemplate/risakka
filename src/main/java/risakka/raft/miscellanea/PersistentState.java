@@ -6,6 +6,7 @@ import org.apache.log4j.Logger;
 import risakka.raft.actor.RaftServer;
 import risakka.raft.log.LogEntry;
 
+import javax.swing.*;
 import java.io.Serializable;
 import java.util.List;
 
@@ -56,6 +57,7 @@ public class PersistentState implements Serializable {
                 log.deleteFrom(currIndex);
             }
             assert raftServer.getState() != ServerState.LEADER || log.size() < currIndex : "Leader Append-Only property violated";
+            JOptionPane.showMessageDialog(null, "Leader Append-Only property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
             log.set(currIndex, entry);
             EventNotifier.getInstance().updateLog(raftServer.getId(), currIndex, entry);
             currIndex++;

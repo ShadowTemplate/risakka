@@ -76,9 +76,10 @@ public class EventNotifier {
             
             //check that no other server became leader in this term 
             assert leaderOfTerm.get(term) == null : "Election Safety property violated";
+            JOptionPane.showMessageDialog(null, "Election Safety property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
             leaderOfTerm.put(term, id);
             
-            //check that new leader has all previosly committed entries
+            //check that new leader has all previously committed entries
             checkGlobalLogPrefixOf(allEntries);
             
         } else if (state == ServerState.CANDIDATE) {
@@ -97,6 +98,7 @@ public class EventNotifier {
     private void checkGlobalLogPrefixOf(SequentialContainer<LogEntry> entries) {
         for (int i = 1; i <= globalLog.size(); i++) {
             assert globalLog.get(i).equals(entries.get(i)) : "Leader Completeness property violated";
+            JOptionPane.showMessageDialog(null, "Leader Completeness property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -111,6 +113,7 @@ public class EventNotifier {
                 if (otherLog.size() >= index && otherLog.get(index).getTermNumber().equals(term)) {
                     for (int j = 1; j <= index; j++) {
                         assert myLog.get(j).equals(otherLog.get(j)) : "Log Matching property violated";
+                        JOptionPane.showMessageDialog(null, "Log Matching property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
                     }
                 }
             }

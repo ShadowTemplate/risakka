@@ -61,9 +61,6 @@ public class RaftServer extends UntypedPersistentActor {
     private final ServerConfImpl serverConf;
 
     public RaftServer(Integer id) {
-        logger.info("QUESTA E' UNA INFO DEL LOGGER");
-        logger.debug("QUESTO E' UN WARN");
-        logger.info("Creating RaftServer with id " + id);
         serverConf = ServerConf.SettingsProvider.get(getContext().system());
         this.id = id;
         this.votersIds = new HashSet<>();
