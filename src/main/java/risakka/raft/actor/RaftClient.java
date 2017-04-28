@@ -96,8 +96,6 @@ public class RaftClient extends UntypedActor {
         }
     }
 
-    // TODO move the following methods in an appropriate location
-
     public int getRandomServerId() {
         int serverToContact = (int) (Math.random() * (clientConf.SERVER_NUMBER));
         logger.info("Server chosen randomly: " + serverToContact);
@@ -137,7 +135,6 @@ public class RaftClient extends UntypedActor {
             } else { //stop
                 logger.info("Crashing: no successful registration");
                 getContext().stop(getSelf());
-                //TODO crash
             }
         }
     }
@@ -161,7 +158,6 @@ public class RaftClient extends UntypedActor {
             } else { //stop
                 logger.info("Crashing: no successful response");
                 getContext().stop(getSelf());
-                //TODO crash
             }
         } catch (Exception ex) {
             logger.error(ex.getMessage());

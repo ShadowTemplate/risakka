@@ -12,7 +12,7 @@ public class ServerConfImpl implements Extension {
     public final String PREFIX_NODE_NAME;
     public final String CLUSTER_NAME;
     public final int SERVER_NUMBER;
-    public final int HEARTBEAT_FREQUENCY;  // TODO make sure it is consistent with the avg broadcasting time
+    public final int HEARTBEAT_FREQUENCY;
     public final int MAX_CLIENT_SESSIONS;
     public final String LOG_FOLDER;
     public final String[] NODES_IPS;
