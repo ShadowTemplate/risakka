@@ -312,7 +312,7 @@ public class RaftServer extends UntypedPersistentActor {
         }
     }
     
-    private List getEntriesInRange(RaftServer server, int startIndex, int endIndex) {
+    private List<LogEntry> getEntriesInRange(RaftServer server, int startIndex, int endIndex) {
         List<LogEntry> entries = new ArrayList<>();
         for (int j = startIndex; j <= endIndex; j++) {
             entries.add(server.getPersistentState().getLog().get(j));
