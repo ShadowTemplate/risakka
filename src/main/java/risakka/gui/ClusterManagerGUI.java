@@ -167,8 +167,19 @@ public class ClusterManagerGUI implements Runnable {
 
         JScrollPane areaScrollPane = new JScrollPane(textArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        areaScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        final JScrollBar verticalScrollBar = areaScrollPane.getVerticalScrollBar();
+        verticalScrollBar.setUnitIncrement(16);
         areaPanel.add(areaScrollPane);
+        verticalScrollBar.addAdjustmentListener(adjustmentEvent -> {
+            if (adjustmentEvent.getValueIsAdjusting()) {
+                caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
+            }
+
+            if (verticalScrollBar.getValue() == verticalScrollBar.getMaximum() - verticalScrollBar.getVisibleAmount()) {
+                textArea.setCaretPosition(textArea.getDocument().getLength());
+                caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+            }
+        });
         return areaPanel;
     }
 

@@ -22,7 +22,7 @@ public class SendHeartbeatMessage implements MessageToServer {
     }
 
     private void sendHeartbeat(RaftServer server) {
-        server.getActorAddresses().stream()
+        server.getActorAddresses()
                 .forEach(actorAddress -> {
             AppendEntriesRequest message = new AppendEntriesRequest(server.getPersistentState().getCurrentTerm(),
                     null, null, new ArrayList<>(), server.getCommitIndex());
