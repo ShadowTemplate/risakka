@@ -158,7 +158,7 @@ public class RaftServer extends UntypedPersistentActor {
         logger.debug("[" + getSelf().path().name() + "] toFollowerState");
         state = ServerState.FOLLOWER;
         if (EventNotifier.getInstance() != null) {
-            EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm(), persistentState.getLog());
+            EventNotifier.getInstance().updateState(id, state);
         }
         cancelSchedule(heartbeatSchedule); // Required when state changed from LEADER to FOLLOWER
         scheduleElection();
@@ -168,7 +168,7 @@ public class RaftServer extends UntypedPersistentActor {
         logger.debug("[" + getSelf().path().name() + "] toCandidateState");
         state = ServerState.CANDIDATE; // c
         if (EventNotifier.getInstance() != null) {
-            EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm(), persistentState.getLog());
+            EventNotifier.getInstance().updateState(id, state);
         }
         beginElection(); // e, d
     }
@@ -177,7 +177,7 @@ public class RaftServer extends UntypedPersistentActor {
         logger.debug("[" + getSelf().path().name() + "] toLeaderState");
         state = ServerState.LEADER;
         if (EventNotifier.getInstance() != null) {
-            EventNotifier.getInstance().updateState(id, state, persistentState.getCurrentTerm(), persistentState.getLog());
+            EventNotifier.getInstance().updateState(id, state);
         }
         leaderId = id;
         cancelSchedule(electionSchedule);
@@ -345,7 +345,7 @@ public class RaftServer extends UntypedPersistentActor {
 
     public void executeCommands(int minIndex, int maxIndex, Boolean leader) {
         List committedEntries = getEntriesInRange(this, minIndex, maxIndex);
-        EventNotifier.getInstance().setCommittedUpTo(id, minIndex, maxIndex, committedEntries);
+        EventNotifier.getInstance().setCommittedUpTo(id, maxIndex);
         for (int i = minIndex; i <= maxIndex; i++) { //v send answer back to the client when committed
             executeCommand(i, leader);
         }

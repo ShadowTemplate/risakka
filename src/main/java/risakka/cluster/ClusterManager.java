@@ -56,11 +56,14 @@ public class ClusterManager {
 
         //read configuration without resolving
         Config initial = ConfigFactory.parseResourcesAnySyntax("server_configuration");
-        
+
         //get only Raft properties
         ServerConfImpl conf = new ServerConfImpl(initial);
         conf.printConfiguration();
-        
+        for (int i = 0; i < conf.SERVER_NUMBER; i++) {
+            actorSystems.add(null);
+        }
+
         if(singleNode) {
             launchSingleNode(id, initial, conf, actorSystems, actors);
         } else { 
@@ -96,7 +99,7 @@ public class ClusterManager {
         system.actorOf(Props.create(RaftServer.class, id), notResolvedConf.PREFIX_NODE_NAME + id);
         String address = Util.getAddressFromId(id, notResolvedConf.CLUSTER_NAME, notResolvedConf.NODES_IPS[id], notResolvedConf.NODES_PORTS[id], notResolvedConf.PREFIX_NODE_NAME);
 
-        actorSystems.add(system);
+        actorSystems.add(id, system);
         actors.put(id, address);
     }
     
