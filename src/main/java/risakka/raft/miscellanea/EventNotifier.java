@@ -75,10 +75,10 @@ public class EventNotifier {
             color = "#1a7a07";
             
             //check that no other server became leader in this term 
-            assert leaderOfTerm.get(term) == null : "Election Safety property violated";
             if (!(leaderOfTerm.get(term) == null)) {
                 JOptionPane.showMessageDialog(null, "Election Safety property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
             }
+            assert leaderOfTerm.get(term) == null : "Election Safety property violated";
             leaderOfTerm.put(term, id);
             
             //check that new leader has all previously committed entries
@@ -99,10 +99,10 @@ public class EventNotifier {
     
     private void checkGlobalLogPrefixOf(SequentialContainer<LogEntry> entries) {
         for (int i = 1; i <= globalLog.size(); i++) {
-            assert globalLog.get(i).equals(entries.get(i)) : "Leader Completeness property violated";
             if (!(globalLog.get(i).equals(entries.get(i)))) {
                 JOptionPane.showMessageDialog(null, "Leader Completeness property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
             }
+            assert globalLog.get(i).equals(entries.get(i)) : "Leader Completeness property violated";
         }
     }
     
@@ -116,10 +116,10 @@ public class EventNotifier {
                 //if both logs contain an entry with same index and term
                 if (otherLog.size() >= index && otherLog.get(index).getTermNumber().equals(term)) {
                     for (int j = 1; j <= index; j++) {
-                        assert myLog.get(j).equals(otherLog.get(j)) : "Log Matching property violated";
                         if (!(myLog.get(j).equals(otherLog.get(j)))) {
                             JOptionPane.showMessageDialog(null, "Log Matching property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
                         }
+                        assert myLog.get(j).equals(otherLog.get(j)) : "Log Matching property violated";
                     }
                 }
             }

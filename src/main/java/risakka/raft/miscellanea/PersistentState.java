@@ -40,10 +40,10 @@ public class PersistentState implements Serializable {
     }
 
     public void updateLog(RaftServer raftServer, int i, LogEntry item, Runnable onSuccess) {
-        assert raftServer.getState() != ServerState.LEADER || log.size() < i : "Leader Append-Only property violated";
         if (!(raftServer.getState() != ServerState.LEADER || log.size() < i)) {
             JOptionPane.showMessageDialog(null, "Leader Append-Only property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
         }
+        assert raftServer.getState() != ServerState.LEADER || log.size() < i : "Leader Append-Only property violated";
         log.set(i, item);
         raftServer.persist(this, ignored -> {
             logger.debug("persistent updateLog called with success");
@@ -56,16 +56,16 @@ public class PersistentState implements Serializable {
         for (LogEntry entry : entries) {
             if (log.size() >= currIndex && // there is already an entry in that position
                     !log.get(currIndex).getTermNumber().equals(entry.getTermNumber())) { // the preexisting entry's term and the new one's are different
-                assert raftServer.getState() != ServerState.LEADER : "Leader Append-Only property violated";
                 if (!(raftServer.getState() != ServerState.LEADER)) {
                     JOptionPane.showMessageDialog(null, "Leader Append-Only property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
                 }
+                assert raftServer.getState() != ServerState.LEADER : "Leader Append-Only property violated";
                 log.deleteFrom(currIndex);
             }
-            assert raftServer.getState() != ServerState.LEADER || log.size() < currIndex : "Leader Append-Only property violated";
             if (!(raftServer.getState() != ServerState.LEADER || log.size() < currIndex)) {
                 JOptionPane.showMessageDialog(null, "Leader Append-Only property violated", "Property violation", JOptionPane.ERROR_MESSAGE);
             }
+            assert raftServer.getState() != ServerState.LEADER || log.size() < currIndex : "Leader Append-Only property violated";
             log.set(currIndex, entry);
             EventNotifier.getInstance().updateLog(raftServer.getId(), currIndex, entry);
             currIndex++;
