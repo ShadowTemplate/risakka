@@ -28,7 +28,7 @@ addresses, names, timeout, log paths). Alternatively, it is possible to run the
 algorithm with the default settings.
 
 To launch several clients, assign to each one a different combination of 
-*hostname* and *port* in the ```client_configuration.conf``` file.
+*hostname* and *port* in the `client_configuration.conf` file.
 
 ### Prerequisites
 
