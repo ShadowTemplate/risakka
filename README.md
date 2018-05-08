@@ -43,7 +43,7 @@ $ git clone https://github.com/ShadowTemplate/risakka.git
 Compile both the server and the client:
 
 ```
-$ cd risakka
+$ cd risakka/
 $ mvn clean install
 ```
 
